@@ -50,8 +50,6 @@ namespace FactoryPlanner.FileReader
             stream.Position = 0;
             reader = new BinaryReader(stream);
 
-            File.WriteAllBytes($"C:\\Users\\Julian\\source\\repos\\FactoryPlanner\\DecompressedBytes\\DecompressedBytes.txt", stream.GetBuffer());
-
             Body = new SaveFileBody(ref reader);
         }
 
