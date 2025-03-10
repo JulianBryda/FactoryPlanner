@@ -14,11 +14,8 @@ namespace FactoryPlanner.FileReader
 {
     internal class SaveFileReader
     {
-        private const uint PACKAGE_SIGNATURE = 0x9E2A83C1;
-
         public string Path { get; set; }
         public SaveFileHeader Header { get; set; }
-        public List<SaveFileBodyCompressed> BodyCompressedList { get; set; } = [];
         public SaveFileBody Body { get; set; }
 
         public SaveFileReader(string path)
@@ -31,26 +28,22 @@ namespace FactoryPlanner.FileReader
 
             Header = new SaveFileHeader(ref reader);
 
+            MemoryStream bodyStream = new();
+            BinaryReader bodyReader = new(bodyStream);
+
             while (reader.BaseStream.Position < reader.BaseStream.Length)
             {
-                BodyCompressedList.Add(new SaveFileBodyCompressed(ref reader));
+                var memStream = DecompressZlib(new SaveFileBodyCompressed(ref reader).CompressedBytes);
+                memStream.Position = 0;
+                memStream.CopyTo(bodyStream);
+                memStream.Dispose();
             }
             stream.Dispose();
             reader.Dispose();
 
-            stream = new MemoryStream();
+            bodyStream.Position = 0;
 
-            for (int i = 0; i < BodyCompressedList.Count; i++)
-            {
-                var memStream = DecompressZlib(BodyCompressedList[i].CompressedBytes);
-                memStream.Position = 0;
-                memStream.CopyTo(stream);
-                memStream.Dispose();
-            }
-            stream.Position = 0;
-            reader = new BinaryReader(stream);
-
-            Body = new SaveFileBody(ref reader);
+            Body = new SaveFileBody(ref bodyReader);
         }
 
         private static MemoryStream DecompressZlib(byte[] compressedData)

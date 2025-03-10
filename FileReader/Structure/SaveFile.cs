@@ -15,28 +15,6 @@ namespace FactoryPlanner.FileReader.Structure
         {
         }
 
-        private static object? ReadFromBinary(ref BinaryReader reader, Type type)
-        {
-            return Type.GetTypeCode(type) switch
-            {
-                TypeCode.Byte => reader.ReadByte(),
-                TypeCode.SByte => reader.ReadSByte(),
-                TypeCode.Int16 => reader.ReadInt16(),
-                TypeCode.UInt16 => reader.ReadUInt16(),
-                TypeCode.Int32 => reader.ReadInt32(),
-                TypeCode.UInt32 => reader.ReadUInt32(),
-                TypeCode.Int64 => reader.ReadInt64(),
-                TypeCode.UInt64 => reader.ReadUInt64(),
-                TypeCode.Single => reader.ReadSingle(),
-                TypeCode.Double => reader.ReadDouble(),
-                TypeCode.Decimal => reader.ReadDecimal(),
-                TypeCode.String => ReadString(ref reader),
-                TypeCode.Boolean => reader.ReadBoolean(),
-                TypeCode.Char => reader.ReadChar(),
-                _ => null,
-            };
-        }
-
         protected static string ReadString(ref BinaryReader reader)
         {
             int length = reader.ReadInt32();
@@ -53,6 +31,7 @@ namespace FactoryPlanner.FileReader.Structure
                 bytes = reader.ReadBytes(length);
                 content = Encoding.Unicode.GetString(bytes);
             }
+            // UTF-8
             else
             {
                 bytes = reader.ReadBytes(length);

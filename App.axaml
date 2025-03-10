@@ -2,7 +2,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="FactoryPlanner.App"
              xmlns:local="using:FactoryPlanner"
-             RequestedThemeVariant="Default">
+             RequestedThemeVariant="Dark"
+			 xmlns:semi="https://irihi.tech/semi">
              <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
 
     <Application.DataTemplates>
@@ -10,6 +11,10 @@
     </Application.DataTemplates>
   
     <Application.Styles>
-        <FluentTheme />
+        <semi:SemiTheme Locale="de-AT" />
     </Application.Styles>
+
+	<Application.Resources>
+		<FontFamily x:Key="Satisfontory">/Assets/Fonts/Satisfontory_v1.5.ttf#Satisfontory</FontFamily>
+	</Application.Resources>
 </Application>

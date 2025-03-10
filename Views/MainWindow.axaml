@@ -15,6 +15,14 @@
         <vm:MainWindowViewModel/>
     </Design.DataContext>
 
-	<Button Click="Button_Click" HorizontalAlignment="Center" VerticalAlignment="Center" >Read File</Button>
-	
+	<Grid>
+
+		<Menu>
+			<MenuItem Header="Test" FontFamily="{StaticResource Satisfontory}" />
+		</Menu>
+
+		<Button Click="Button_Click" HorizontalAlignment="Center" VerticalAlignment="Center" >Read File</Button>
+
+
+	</Grid>
 </Window>
