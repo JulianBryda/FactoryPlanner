@@ -3,26 +3,26 @@
         xmlns:vm="using:FactoryPlanner.ViewModels"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:controls="clr-namespace:FactoryPlanner.Components.Controls"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="FactoryPlanner.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Icon="/Assets/avalonia-logo.ico"
         Title="FactoryPlanner">
 
-    <Design.DataContext>
-        <!-- This only sets the DataContext for the previewer in an IDE,
+	<Design.DataContext>
+		<!-- This only sets the DataContext for the previewer in an IDE,
              to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
-        <vm:MainWindowViewModel/>
-    </Design.DataContext>
-
-	<Grid>
-
-		<Menu>
-			<MenuItem Header="Test" FontFamily="{StaticResource Satisfontory}" />
-		</Menu>
-
-		<Button Click="Button_Click" HorizontalAlignment="Center" VerticalAlignment="Center" >Read File</Button>
+		<vm:MainWindowViewModel/>
+	</Design.DataContext>
 
 
-	</Grid>
+	<Border Padding="20">
+		<!-- Add Controls for Previewer Here -->
+		<controls:BaseLayout >
+			<TextBlock>TEST</TextBlock>
+		</controls:BaseLayout>
+	</Border>
+
+
 </Window>
