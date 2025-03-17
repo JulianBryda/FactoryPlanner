@@ -3,7 +3,6 @@
         xmlns:vm="using:FactoryPlanner.ViewModels"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:controls="clr-namespace:FactoryPlanner.Components.Controls"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="FactoryPlanner.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
@@ -16,13 +15,30 @@
 		<vm:MainWindowViewModel/>
 	</Design.DataContext>
 
+	<Grid>
 
-	<Border Padding="20">
-		<!-- Add Controls for Previewer Here -->
-		<controls:BaseLayout >
-			<TextBlock>TEST</TextBlock>
-		</controls:BaseLayout>
-	</Border>
+		<Grid.RowDefinitions>
+			<RowDefinition Height="100" />
+			<RowDefinition Height="*" />
+		</Grid.RowDefinitions>
 
+		<NavigationBar />
+		
+		<Grid Grid.Row="1" >
+
+			<ProgressBar Width="150" Height="150" ShowProgressText="True" Theme="{DynamicResource ProgressRing}" IsVisible="{Binding ProgressBarVisible}" VerticalAlignment="Center" HorizontalAlignment="Center"  Minimum="0" Maximum="100" Value="{Binding Progress}" />
+			
+			<ListBox ItemsSource="{Binding Items}">
+				<ListBox.ItemTemplate>
+					<DataTemplate>
+						<IconText Width="100" ImageSource="/Assets/Icons/Smelter.png" Text="{Binding Name}" />
+					</DataTemplate>
+				</ListBox.ItemTemplate>
+			</ListBox>
+			
+			
+		</Grid>
+		
+	</Grid>
 
 </Window>

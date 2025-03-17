@@ -1,11 +1,14 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
-using Avalonia.Data.Core;
 using Avalonia.Data.Core.Plugins;
 using Avalonia.Markup.Xaml;
+using Avalonia.Metadata;
 using FactoryPlanner.ViewModels;
 using FactoryPlanner.Views;
 using System.Linq;
+
+[assembly: XmlnsDefinition("https://github.com/avaloniaui", "FactoryPlanner.Controls")]
+[assembly: XmlnsDefinition("https://github.com/avaloniaui", "FactoryPlanner.Controls.Navigation")]
 
 namespace FactoryPlanner
 {

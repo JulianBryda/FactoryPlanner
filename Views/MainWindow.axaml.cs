@@ -9,12 +9,5 @@ namespace FactoryPlanner.Views
         {
             InitializeComponent();
         }
-
-        private void Button_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
-        {
-            SaveFileReader reader = new("C:\\Users\\Julian\\source\\repos\\FactoryPlanner\\FileReader\\1.0 BABY_autosave_2.sav");
-
-            string test = "";
-        }
     }
 }

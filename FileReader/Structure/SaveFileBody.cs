@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Reflection.PortableExecutable;
 using System.Runtime.InteropServices.Marshalling;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
@@ -43,7 +44,6 @@ namespace FactoryPlanner.FileReader.Structure
                 Debug.WriteLine($"Sublevel: {i} Stream Position: {reader.BaseStream.Position}");
                 levels.Add(new Level(ref reader, i == SublevelCount));
             }
-            var test = levels.Last();
 
             Levels = [.. levels];
         }
@@ -107,21 +107,19 @@ namespace FactoryPlanner.FileReader.Structure
             ObjectsSize = reader.ReadUInt64();
             ObjectCount = reader.ReadUInt32();
 
-            List<ActorObject> actorObjects = [];
-            List<ComponentObject> componentObjects = [];
+            List<ActCompObject> actCompObjects = [];
             foreach (var header in ObjectHeaders)
             {
                 if (header.Type == ObjectHeader.HeaderType.ActorHeader)
                 {
-                    actorObjects.Add(new ActorObject(ref reader));
+                    actCompObjects.Add(new ActorObject(ref reader));
                 }
                 else
                 {
-                    componentObjects.Add(new ComponentObject(ref reader));
+                    actCompObjects.Add(new ComponentObject(ref reader));
                 }
             }
-            ActorObjects = [.. actorObjects];
-            ComponentObjects = [.. componentObjects];
+            ActCompObjects = [.. actCompObjects];
 
             SecondCollectablesCount = reader.ReadUInt32();
 
@@ -141,8 +139,7 @@ namespace FactoryPlanner.FileReader.Structure
         public ObjectReference[] Collectables { get; set; }
         public ulong ObjectsSize { get; set; }
         public uint ObjectCount { get; set; }
-        public ActorObject[] ActorObjects { get; set; }
-        public ComponentObject[] ComponentObjects { get; set; }
+        public ActCompObject[] ActCompObjects { get; set; }
         public uint SecondCollectablesCount { get; set; }
         public ObjectReference[] SecondCollectables { get; set; }
     }
@@ -155,11 +152,11 @@ namespace FactoryPlanner.FileReader.Structure
 
             if (Type == HeaderType.ActorHeader)
             {
-                ActorHeader = new ActorHeader(ref reader);
+                ActCompHeader = new ActorHeader(ref reader);
             }
             else if (Type == HeaderType.ComponentHeader)
             {
-                ComponentHeader = new ComponentHeader(ref reader);
+                ActCompHeader = new ComponentHeader(ref reader);
             }
             else
             {
@@ -173,45 +170,76 @@ namespace FactoryPlanner.FileReader.Structure
             ActorHeader = 1
         }
         public HeaderType Type { get; set; }
-        public ActorHeader? ActorHeader { get; set; }
-        public ComponentHeader? ComponentHeader { get; set; }
+        public ActCompHeader ActCompHeader { get; set; }
     }
 
-    internal class ActorHeader(ref BinaryReader reader) : SaveFile(ref reader)
+    internal class ActCompHeader(ref BinaryReader reader) : SaveFile(ref reader)
     {
         public string TypePath { get; set; } = ReadString(ref reader);
         public string RootObject { get; set; } = ReadString(ref reader);
         public string InstanceName { get; set; } = ReadString(ref reader);
-        public uint NeedTransform { get; set; } = reader.ReadUInt32();
-        public float RotationX { get; set; } = reader.ReadSingle();
-        public float RotationY { get; set; } = reader.ReadSingle();
-        public float RotationZ { get; set; } = reader.ReadSingle();
-        public float RotationW { get; set; } = reader.ReadSingle();
-        public float PositionX { get; set; } = reader.ReadSingle();
-        public float PositionY { get; set; } = reader.ReadSingle();
-        public float PositionZ { get; set; } = reader.ReadSingle();
-        public float ScaleX { get; set; } = reader.ReadSingle();
-        public float ScaleY { get; set; } = reader.ReadSingle();
-        public float ScaleZ { get; set; } = reader.ReadSingle();
-        public uint WasPlacedInLevel { get; set; } = reader.ReadUInt32();
     }
 
-    internal class ComponentHeader(ref BinaryReader reader) : SaveFile(ref reader)
+    internal class ActorHeader : ActCompHeader
     {
-        public string TypePath { get; set; } = ReadString(ref reader);
-        public string RootObject { get; set; } = ReadString(ref reader);
-        public string InstanceName { get; set; } = ReadString(ref reader);
-        public string ParentActorName { get; set; } = ReadString(ref reader);
+        public ActorHeader(ref BinaryReader reader) : base(ref reader)
+        {
+            NeedTransform = reader.ReadUInt32();
+            RotationX = reader.ReadSingle();
+            RotationY = reader.ReadSingle();
+            RotationZ = reader.ReadSingle();
+            RotationW = reader.ReadSingle();
+            PositionX = reader.ReadSingle();
+            PositionY = reader.ReadSingle();
+            PositionZ = reader.ReadSingle();
+            ScaleX = reader.ReadSingle();
+            ScaleY = reader.ReadSingle();
+            ScaleZ = reader.ReadSingle();
+            WasPlacedInLevel = reader.ReadUInt32();
+        }
+
+        public uint NeedTransform { get; set; }
+        public float RotationX { get; set; }
+        public float RotationY { get; set; }
+        public float RotationZ { get; set; }
+        public float RotationW { get; set; }
+        public float PositionX { get; set; }
+        public float PositionY { get; set; }
+        public float PositionZ { get; set; }
+        public float ScaleX { get; set; }
+        public float ScaleY { get; set; }
+        public float ScaleZ { get; set; }
+        public uint WasPlacedInLevel { get; set; }
     }
 
-    internal class ActorObject : SaveFile
+    internal class ComponentHeader : ActCompHeader
     {
-        public ActorObject(ref BinaryReader reader) : base(ref reader)
+        public ComponentHeader(ref BinaryReader reader) : base(ref reader)
+        {
+            ParentActorName = ReadString(ref reader);
+        }
+
+        public string ParentActorName { get; set; }
+    }
+
+    internal class ActCompObject : SaveFile
+    {
+        public ActCompObject(ref BinaryReader reader) : base(ref reader)
         {
             SaveVersion = reader.ReadUInt32();
             Flag = reader.ReadUInt32();
             Size = reader.ReadUInt32();
+        }
 
+        public uint SaveVersion { get; set; }
+        public uint Flag { get; set; }
+        public uint Size { get; set; }
+    }
+
+    internal class ActorObject : ActCompObject
+    {
+        public ActorObject(ref BinaryReader reader) : base(ref reader)
+        {
             long newPosition = reader.BaseStream.Position + Size; // current position + size of object
 
             ParentObjectReference = new ObjectReference(ref reader);
@@ -235,9 +263,6 @@ namespace FactoryPlanner.FileReader.Structure
             reader.BaseStream.Position = newPosition;
         }
 
-        public uint SaveVersion { get; set; }
-        public uint Flag { get; set; }
-        public uint Size { get; set; }
         public ObjectReference ParentObjectReference { get; set; }
         public uint ComponentCount { get; set; }
         public ObjectReference[] Components { get; set; }
@@ -245,14 +270,10 @@ namespace FactoryPlanner.FileReader.Structure
         public byte[] TrailingBytes { get; set; } = [];
     }
 
-    internal class ComponentObject : SaveFile
+    internal class ComponentObject : ActCompObject
     {
         public ComponentObject(ref BinaryReader reader) : base(ref reader)
         {
-            SaveVersion = reader.ReadUInt32();
-            Flag = reader.ReadUInt32();
-            Size = reader.ReadUInt32();
-
             long newPosition = reader.BaseStream.Position + Size; // current position + size of object
 
 
@@ -260,9 +281,6 @@ namespace FactoryPlanner.FileReader.Structure
             reader.BaseStream.Position = newPosition;
         }
 
-        public uint  SaveVersion { get; set; }
-        public uint Flag { get; set; }
-        public uint Size { get; set; }
         public Property[] Properties { get; set; } = [];
         public byte[] TrailingBytes { get; set; } = [];
     }

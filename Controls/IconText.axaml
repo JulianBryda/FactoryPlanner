@@ -1,0 +1,33 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="using:FactoryPlanner.Controls">
+
+	<!--
+    Additional resources 
+    Using Control Themes:
+         https://docs.avaloniaui.net/docs/basics/user-interface/styling/control-themes
+    Using Theme Variants:
+         https://docs.avaloniaui.net/docs/guides/styles-and-resources/how-to-use-theme-variants
+  -->
+
+	<Design.PreviewWith>
+		<StackPanel Width="200" Spacing="10">
+			<StackPanel Background="{DynamicResource SystemRegionBrush}">
+				<controls:IconText ImageMargin="10" ImageSource="./Assets/Icons/Smelter.png" Text="Test" />
+			</StackPanel>
+		</StackPanel>
+	</Design.PreviewWith>
+
+	<ControlTheme x:Key="{x:Type controls:IconText}" TargetType="controls:IconText">
+		<Setter Property="Template">
+			<Setter.Value>
+				<ControlTemplate TargetType="controls:IconText">
+					<Grid ColumnDefinitions="*, *">
+						<Image Source="{TemplateBinding ImageSource}" Margin="{TemplateBinding ImageMargin}" VerticalAlignment="Center" HorizontalAlignment="Center" Stretch="UniformToFill" />
+						<TextBlock Text="{TemplateBinding Text}" HorizontalAlignment="Center" VerticalAlignment="Center" Grid.Column="1"/>
+					</Grid>
+				</ControlTemplate>
+			</Setter.Value>
+		</Setter>
+	</ControlTheme>
+</ResourceDictionary>
