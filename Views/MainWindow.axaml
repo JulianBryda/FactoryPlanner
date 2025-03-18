@@ -22,23 +22,54 @@
 			<RowDefinition Height="*" />
 		</Grid.RowDefinitions>
 
-		<NavigationBar />
-		
+		<Border Background="#121216">
+			<Border.Effect>
+				<DropShadowEffect Color="Black" BlurRadius="20" />
+			</Border.Effect>
+			<NavigationBar />
+		</Border>
+
 		<Grid Grid.Row="1" >
 
-			<ProgressBar Width="150" Height="150" ShowProgressText="True" Theme="{DynamicResource ProgressRing}" IsVisible="{Binding ProgressBarVisible}" VerticalAlignment="Center" HorizontalAlignment="Center"  Minimum="0" Maximum="100" Value="{Binding Progress}" />
-			
-			<ListBox ItemsSource="{Binding Items}">
-				<ListBox.ItemTemplate>
+			<Grid.ColumnDefinitions>
+				<ColumnDefinition Width="*" />
+				<ColumnDefinition Width="2*" />
+			</Grid.ColumnDefinitions>
+
+			<ProgressBar Grid.Column="1" Width="150" Height="150" ShowProgressText="True" Theme="{DynamicResource ProgressRing}" IsVisible="{Binding ProgressBarVisible}" VerticalAlignment="Center" HorizontalAlignment="Center"  Minimum="0" Maximum="100" Value="{Binding Progress}" />
+
+			<DockPanel>
+				<ListBox ItemsSource="{Binding PatchNotes}" >
+					<ListBox.ItemTemplate>
+						<DataTemplate>
+							<Border Background="Gray" Opacity="0.5" CornerRadius="5" Padding="8" >
+								<TextBlock Opacity="2" Text="{Binding Title}"/>
+							</Border>
+						</DataTemplate>
+					</ListBox.ItemTemplate>
+				</ListBox>
+
+				<Border Width="1" Background="Gray" Margin="20 5 20 30" HorizontalAlignment="Right" />
+			</DockPanel>
+
+			<ItemsControl Grid.Column="1" ItemsSource="{Binding IconTexts}">
+				<ItemsControl.ItemsPanel>
+					<ItemsPanelTemplate>
+						<WrapPanel Orientation="Horizontal" />
+					</ItemsPanelTemplate>
+				</ItemsControl.ItemsPanel>
+				<ItemsControl.ItemTemplate>
 					<DataTemplate>
-						<IconText Width="100" ImageSource="/Assets/Icons/Smelter.png" Text="{Binding Name}" />
+						<Border Margin="10" Padding="5" Background="#141416" CornerRadius="20" >
+							<IconText FontWeight="Bold" Foreground="#ddd" ImageMargin="10" Width="{Binding Width}" Height="{Binding Height}" ImageSource="{Binding Image}" Text="{Binding Name}" />
+						</Border>
 					</DataTemplate>
-				</ListBox.ItemTemplate>
-			</ListBox>
-			
-			
+				</ItemsControl.ItemTemplate>
+			</ItemsControl>
+
+
 		</Grid>
-		
+
 	</Grid>
 
 </Window>

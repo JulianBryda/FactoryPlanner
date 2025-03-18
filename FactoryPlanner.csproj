@@ -9,7 +9,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <AvaloniaResource Include="Assets\**" />
+	  <AvaloniaResource Include="Assets\**" />
+	  <None Include="Assets\**">
+		  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </None>
   </ItemGroup>
 
   <ItemGroup>
@@ -21,6 +24,11 @@
 
   <ItemGroup>
     <AvaloniaResource Remove="Assets\AssetManager.cs" />
+    <AvaloniaResource Remove="Assets\Icons\Playtime.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="Assets\Icons\Refinery.png" />
   </ItemGroup>
 
   <ItemGroup>

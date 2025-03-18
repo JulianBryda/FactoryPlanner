@@ -1,6 +1,4 @@
-﻿using Avalonia.Controls.Generators;
-using Avalonia.Input.TextInput;
-using Avalonia.Threading;
+﻿using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using FactoryPlanner.FileReader;
 using FactoryPlanner.FileReader.Structure;
@@ -11,6 +9,9 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
+using System.Net.Http.Json;
+using System.Text.Json.Nodes;
 using System.Threading;
 
 namespace FactoryPlanner.ViewModels
@@ -21,10 +22,12 @@ namespace FactoryPlanner.ViewModels
         private int progress;
         [ObservableProperty]
         private bool progressBarVisible = true;
-        public ObservableCollection<MyItem> Items { get; set; } = [];
+        public ObservableCollection<IconTextModel> IconTexts { get; set; } = [];
+        public ObservableCollection<PatchNoteModel> PatchNotes { get; set; } = [];
 
 
         private readonly SaveFileReader _saveFileReader;
+        private readonly string _patchNotesRequestContent = "{\"query\":\"query($date_range: Float, $search: String, $category: String, $sort: String, $status: String, $version_number: String, $answered: String!, $showHidden: Boolean! $skip: Int!, $limit: Int!) {\\n              allPatchNotes(date_range: $date_range, search: $search, category: $category, sort: $sort, status: $status, version_number: $version_number, answered: $answered, showHidden: $showHidden, skip: $skip, limit: $limit) {\\n                posts{\\n                  id\\n                  title\\n                  upvotes\\n                  categories\\n                  contents\\n                  creation_date\\n                  status\\n                  version_number\\n                  author {\\n                      username\\n                      role\\n                  }\\n                  comments{\\n                      id\\n                  }\\n                  isPinned\\n                  pinnedDate\\n                  countComments\\n                  answered\\n                  admin_data{\\n                    in_progress\\n                  }\\n                  hidden\\n                }\\n                totalDocs\\n                totalUpvotes\\n                totalComments\\n                totalPages\\n                limit\\n                hasPrevPage\\n                hasNextPage\\n              }\\n          }\\n        \",\"variables\":{\"date_range\":9999,\"search\":\"\",\"category\":\"\",\"sort\":\"upvotes-asc\",\"status\":\"\",\"answered\":\"all\",\"showHidden\":false,\"skip\":0,\"limit\":20},\"opName\":\"allPatchNotes\"}";
 
         public MainWindowViewModel()
         {
@@ -33,25 +36,63 @@ namespace FactoryPlanner.ViewModels
             _saveFileReader = new SaveFileReader(@"C:\Users\Julian\source\repos\FactoryPlanner\FileReader\1.0 BABY_autosave_2.sav");
             _saveFileReader.OnProgressUpdate += SaveFileReader_OnProgressUpdate;
             _saveFileReader.OnFinish += SaveFileReader_OnFinish;
+
+            GetPatchNotes();
         }
 
         private void SaveFileReader_OnFinish(object sender)
         {
-            int smelter = _saveFileReader.CountActCompHeader(TypePaths.SmelterMk1);
-            int assembler = _saveFileReader.CountActCompHeader(TypePaths.AssemblerMk1);
-            int constructor = _saveFileReader.CountActCompHeader(TypePaths.ConstructorMk1);
-            int refinery = _saveFileReader.CountActCompHeader(TypePaths.OilRefinery);
+            TimeSpan playtime = TimeSpan.FromSeconds(_saveFileReader.Header.PlayedSeconds);
 
-            Items.Add(new MyItem() { Name = smelter.ToString()});
-            Items.Add(new MyItem() { Name = assembler.ToString()});
-            Items.Add(new MyItem() { Name = constructor.ToString()});
-            Items.Add(new MyItem() { Name = refinery.ToString()});
+            IconTexts.Add(new IconTextModel() { Name = $"{playtime.Hours + playtime.Days * 24}h {playtime.Minutes}m", Image = new(".\\Assets\\Icons\\Playtime.png"), Width = 200, Height = 120 });
+
+
+            int smelterCount = _saveFileReader.CountActCompHeader(TypePaths.SmelterMk1);
+            int assemblerCount = _saveFileReader.CountActCompHeader(TypePaths.AssemblerMk1);
+            int constructorCount = _saveFileReader.CountActCompHeader(TypePaths.ConstructorMk1);
+            int refineryCount = _saveFileReader.CountActCompHeader(TypePaths.OilRefinery);
+
+            IconTexts.Add(new IconTextModel() { Name = smelterCount.ToString(), Image = new(".\\Assets\\Icons\\Smelter.png"), Width = 200, Height = 120 });
+            IconTexts.Add(new IconTextModel() { Name = assemblerCount.ToString(), Image = new(".\\Assets\\Icons\\Assembler.png"), Width = 200, Height = 120 });
+            IconTexts.Add(new IconTextModel() { Name = constructorCount.ToString(), Image = new(".\\Assets\\Icons\\Constructor.png"), Width = 200, Height = 120 });
+            IconTexts.Add(new IconTextModel() { Name = refineryCount.ToString(), Image = new(".\\Assets\\Icons\\Refinery.png"), Width = 200, Height = 120 });
         }
 
         private void SaveFileReader_OnProgressUpdate(object sender, float value)
         {
             Progress = (int)value;
             ProgressBarVisible = value < 100f;
+        }
+
+        private async void GetPatchNotes()
+        {
+            HttpClient client = new();
+            var response = await client.PostAsync("https://questions.satisfactorygame.com/graphql",
+                new StringContent(_patchNotesRequestContent, System.Text.Encoding.UTF8, "application/json"));
+
+            if (!response.IsSuccessStatusCode)
+            {
+                PatchNotes.Add(new PatchNoteModel() { Title = "Failed to load Patch Notes!" });
+            }
+
+            JsonNode? json = JsonNode.Parse(await response.Content.ReadAsStringAsync());
+            if (json == null)
+            {
+                PatchNotes.Add(new PatchNoteModel() { Title = "Failed to load Patch Notes!" });
+            }
+
+            JsonArray array = (JsonArray)json["data"]["allPatchNotes"]["posts"];
+            foreach (var item in array)
+            {
+                PatchNotes.Add(new PatchNoteModel()
+                {
+                    Id = (string)item["id"],
+                    Title = (string)item["title"],
+                    DateTime = DateTimeOffset.FromUnixTimeMilliseconds((long)item["creation_date"]).DateTime,
+                    Version = (string)item["version_number"]
+                });
+            }
+
         }
 
         private static string GetNewestSavePath()
@@ -85,10 +126,19 @@ namespace FactoryPlanner.ViewModels
             return filePath;
         }
 
-    }
-
-    public class MyItem
-    {
-        public string Name { get; set; } = string.Empty;
+        public class IconTextModel
+        {
+            public required string Name { get; set; }
+            public required Bitmap Image { get; set; }
+            public required int Width { get; set; }
+            public required int Height { get; set; }
+        }
+        public class PatchNoteModel
+        {
+            public string Id { get; set; } = string.Empty;
+            public required string Title { get; set; }
+            public DateTime DateTime { get; set; }
+            public string Version { get; set; } = string.Empty;
+        }
     }
 }
