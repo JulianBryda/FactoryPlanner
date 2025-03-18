@@ -1,6 +1,8 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:FactoryPlanner.ViewModels"
+		xmlns:rxui="http://reactiveui.net"
+		xmlns:app="clr-namespace:FactoryPlanner"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
@@ -16,60 +18,34 @@
 	</Design.DataContext>
 
 	<Grid>
-
 		<Grid.RowDefinitions>
-			<RowDefinition Height="100" />
 			<RowDefinition Height="*" />
+			<RowDefinition Height="Auto" />
 		</Grid.RowDefinitions>
-
-		<Border Background="#121216">
-			<Border.Effect>
-				<DropShadowEffect Color="Black" BlurRadius="20" />
-			</Border.Effect>
-			<NavigationBar />
-		</Border>
-
-		<Grid Grid.Row="1" >
-
-			<Grid.ColumnDefinitions>
-				<ColumnDefinition Width="*" />
-				<ColumnDefinition Width="2*" />
-			</Grid.ColumnDefinitions>
-
-			<ProgressBar Grid.Column="1" Width="150" Height="150" ShowProgressText="True" Theme="{DynamicResource ProgressRing}" IsVisible="{Binding ProgressBarVisible}" VerticalAlignment="Center" HorizontalAlignment="Center"  Minimum="0" Maximum="100" Value="{Binding Progress}" />
-
-			<DockPanel>
-				<ListBox ItemsSource="{Binding PatchNotes}" >
-					<ListBox.ItemTemplate>
-						<DataTemplate>
-							<Border Background="Gray" Opacity="0.5" CornerRadius="5" Padding="8" >
-								<TextBlock Opacity="2" Text="{Binding Title}"/>
-							</Border>
-						</DataTemplate>
-					</ListBox.ItemTemplate>
-				</ListBox>
-
-				<Border Width="1" Background="Gray" Margin="20 5 20 30" HorizontalAlignment="Right" />
-			</DockPanel>
-
-			<ItemsControl Grid.Column="1" ItemsSource="{Binding IconTexts}">
-				<ItemsControl.ItemsPanel>
-					<ItemsPanelTemplate>
-						<WrapPanel Orientation="Horizontal" />
-					</ItemsPanelTemplate>
-				</ItemsControl.ItemsPanel>
-				<ItemsControl.ItemTemplate>
-					<DataTemplate>
-						<Border Margin="10" Padding="5" Background="#141416" CornerRadius="20" >
-							<IconText FontWeight="Bold" Foreground="#ddd" ImageMargin="10" Width="{Binding Width}" Height="{Binding Height}" ImageSource="{Binding Image}" Text="{Binding Name}" />
-						</Border>
-					</DataTemplate>
-				</ItemsControl.ItemTemplate>
-			</ItemsControl>
-
-
-		</Grid>
-
+		<rxui:RoutedViewHost Grid.Row="0" Router="{Binding Router}">
+			<rxui:RoutedViewHost.DefaultContent>
+				<TextBlock Text="Default content"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center" />
+			</rxui:RoutedViewHost.DefaultContent>
+			<rxui:RoutedViewHost.ViewLocator>
+				<!-- See AppViewLocator.cs section below -->
+				<app:AppViewLocator />
+			</rxui:RoutedViewHost.ViewLocator>
+		</rxui:RoutedViewHost>
+		<StackPanel Grid.Row="1" Orientation="Horizontal" Margin="15">
+			<StackPanel.Styles>
+				<Style Selector="StackPanel > :is(Control)">
+					<Setter Property="Margin" Value="2"/>
+				</Style>
+				<Style Selector="StackPanel > TextBlock">
+					<Setter Property="VerticalAlignment" Value="Center"/>
+				</Style>
+			</StackPanel.Styles>
+			<Button Content="Go next" Command="{Binding GoNext}" />
+			<Button Content="Go back" Command="{Binding GoBack}" />
+			<TextBlock Text="{Binding Router.NavigationStack.Count}" />
+		</StackPanel>
 	</Grid>
 
 </Window>
