@@ -202,7 +202,7 @@ namespace FactoryPlanner.FileReader.Structure.Properties
                     properties.Add(new PropertyListEntry(ref reader));
                 }
                 while (properties.Last().Name != "None");
-                Properties = [.. properties];
+                Properties = [.. properties[..^1]];
             }
 
             public Property[] Properties { get; set; }
@@ -289,7 +289,7 @@ namespace FactoryPlanner.FileReader.Structure.Properties
                 properties.Add(new PropertyListEntry(ref reader));
             }
             while (properties.Last().Name != "None");
-            Properties = [.. properties];
+            Properties = [.. properties[..^1]];
         }
 
         public string Type { get; set; }

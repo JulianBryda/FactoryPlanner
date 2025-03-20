@@ -1,5 +1,7 @@
-﻿using System;
+﻿using Avalonia.Media;
+using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography.X509Certificates;
@@ -41,12 +43,12 @@ namespace FactoryPlanner.FileReader.Structure.Properties
                 properties.Add(new PropertyListEntry(ref reader));
             }
             while (properties.Last().Name != "None");
-            Properties = [.. properties];
+            Properties = [.. properties[..^1]];
         }
 
         public ObjectReference Reference { get; set; }
         public uint State { get; set; }
-        public ObjectReference? ItemState { get;set; }
+        public ObjectReference? ItemState { get; set; }
         public uint ItemStateLength { get; set; }
         public PropertyListEntry[] Properties { get; set; } = [];
     }
@@ -69,10 +71,10 @@ namespace FactoryPlanner.FileReader.Structure.Properties
 
     internal class Quat(ref BinaryReader reader) : Property(ref reader)
     {
-        public float X { get; set; } = reader.ReadSingle();
-        public float Y { get; set; } = reader.ReadSingle();
-        public float Z { get; set; } = reader.ReadSingle();
-        public float W { get; set; } = reader.ReadSingle();
+        public double X { get; set; } = reader.ReadDouble();
+        public double Y { get; set; } = reader.ReadDouble();
+        public double Z { get; set; } = reader.ReadDouble();
+        public double W { get; set; } = reader.ReadDouble();
     }
 
     internal class RailroadTrackPosition(ref BinaryReader reader) : Property(ref reader)
@@ -113,13 +115,21 @@ namespace FactoryPlanner.FileReader.Structure.Properties
         public ClientIdentityInfo(ref BinaryReader reader) : base(ref reader)
         {
             UUID = ReadString(ref reader);
+            IdentityCount = reader.ReadUInt32();
 
+            List<Identity> identities = [];
+            for (int i = 0; i < IdentityCount; i++)
+            {
+                identities.Add(new Identity(ref reader));
+            }
+            Identities = [.. identities];
         }
 
         public string UUID { get; set; }
         public uint IdentityCount { get; set; }
+        public Identity[] Identities { get; set; }
 
-        private class Identity : Property
+        public class Identity : Property
         {
             public Identity(ref BinaryReader reader) : base(ref reader)
             {

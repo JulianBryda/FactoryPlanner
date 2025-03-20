@@ -32,6 +32,6 @@ namespace FactoryPlanner.FileReader.Structure.Properties
         public string Type { get; set; } = string.Empty;
         public uint Size { get; set; }
         public uint Index { get; set; }
-        public Property Property { get; set; }
+        public Property? Property { get; set; }
     }
 }

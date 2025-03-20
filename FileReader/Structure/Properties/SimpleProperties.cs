@@ -74,9 +74,11 @@ namespace FactoryPlanner.FileReader.Structure.Properties
                 do
                 {
                     var entry = new PropertyListEntry(ref reader);
-                    data.Add(entry.Property);
-
+                    
                     shouldContinue = entry.Name != "None";
+                    
+                    if (shouldContinue)
+                        data.Add(entry);
                 }
                 while (shouldContinue);
             }

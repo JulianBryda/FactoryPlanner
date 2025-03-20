@@ -258,7 +258,7 @@ namespace FactoryPlanner.FileReader.Structure
                 properties.Add(new PropertyListEntry(ref reader));
             }
             while (properties.Last().Name != "None");
-            Properties = [.. properties];
+            Properties = [..properties[..^1]];
 
             reader.BaseStream.Position = newPosition;
         }
@@ -282,7 +282,7 @@ namespace FactoryPlanner.FileReader.Structure
                 properties.Add(new PropertyListEntry(ref reader));
             }
             while (properties.Last().Name != "None");
-            Properties = [.. properties];
+            Properties = [.. properties[..^1]];
 
             reader.BaseStream.Position = newPosition;
         }
