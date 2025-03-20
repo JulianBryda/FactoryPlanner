@@ -29,9 +29,7 @@ namespace FactoryPlanner.ViewModels
 
         public DashboardViewModel(IScreen screen) : base(screen)
         {
-            string newestSavePath = GetNewestSavePath();
-
-            _saveFileReader = new SaveFileReader(@"C:\Users\JulianBrydaVeloce\Source\Repos\FactoryPlanner\FileReader\1.0 BABY_autosave_2.sav");
+            _saveFileReader = SaveFileReader.LoadedSaveFile;
             _saveFileReader.OnProgressUpdate += SaveFileReader_OnProgressUpdate;
             _saveFileReader.OnFinish += SaveFileReader_OnFinish;
 
@@ -117,37 +115,6 @@ namespace FactoryPlanner.ViewModels
             }
 
             return text;
-        }
-
-        private static string GetNewestSavePath()
-        {
-            string? filePath = Environment.GetEnvironmentVariable("LocalAppdata");
-            if (filePath == null) throw new ArgumentNullException("Failed to get Path to %Localappdata%!");
-
-            filePath += "\\FactoryGame\\Saved\\SaveGames";
-
-            foreach (var dir in Directory.GetDirectories(filePath))
-            {
-                string dirName = Path.GetFileName(dir);
-                if (dirName.All(char.IsDigit))
-                {
-                    filePath = dir;
-                    break;
-                }
-            }
-
-            DateTime lastWrite = DateTime.MinValue;
-            foreach (var file in Directory.GetFiles(filePath))
-            {
-                DateTime last = File.GetLastWriteTimeUtc(file);
-                if (last > lastWrite)
-                {
-                    lastWrite = last;
-                    filePath = file;
-                }
-            }
-
-            return filePath;
         }
 
         public class IconTextModel

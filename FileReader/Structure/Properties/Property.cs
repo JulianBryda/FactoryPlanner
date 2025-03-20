@@ -58,13 +58,18 @@ namespace FactoryPlanner.FileReader.Structure.Properties
         {
             return type switch
             {
+                "IntVector4" => new IntVector4(ref reader),
+                "Color" => new Color(ref reader),
                 "Box" => new Box(ref reader),
                 "FluidBox" => new FluidBox(ref reader),
                 "InventoryItem" => new InventoryItem(ref reader),
                 "LinearColor" => new LinearColor(ref reader),
                 "Quat" => new Quat(ref reader),
+                "Vector4" => new Quat(ref reader),
                 "RailroadTrackPosition" => new RailroadTrackPosition(ref reader),
                 "Vector" => new Vector(ref reader),
+                "Rotator" => new Vector(ref reader),
+                "Vector2D" => new Vector2D(ref reader),
                 "DateTime" => new DateTime(ref reader),
                 "ClientIdentityInfo" => new ClientIdentityInfo(ref reader),
                 _ => null
@@ -268,29 +273,23 @@ namespace FactoryPlanner.FileReader.Structure.Properties
     {
         public StructProperty(ref BinaryReader reader) : base(ref reader)
         {
-            reader.BaseStream.Position -= 8;
-            uint size = reader.ReadUInt32();
-            uint index = reader.ReadUInt32();
-
             Type = ReadString(ref reader);
             _ = reader.ReadBytes(17); // padding
-            _ = reader.ReadBytes((int)size); // skip body for now
 
-            //Property? typedData = CheckTypedData(Type, ref reader);
-            //if (typedData != null)
-            //{
-            //    Properties = [typedData];
-            //    return;
-            //}
+            Property? typedData = CheckTypedData(Type, ref reader);
+            if (typedData != null)
+            {
+                Properties = [typedData];
+                return;
+            }
 
-            //List<PropertyListEntry> properties = [];
-            //do
-            //{
-            //    var entry = new PropertyListEntry(ref reader);
-            //    properties.Add(entry);
-            //}
-            //while (properties.Last().Name != "None");
-            //Properties = [.. properties.Select(o => o.Property)];
+            List<PropertyListEntry> properties = [];
+            do
+            {
+                properties.Add(new PropertyListEntry(ref reader));
+            }
+            while (properties.Last().Name != "None");
+            Properties = [.. properties];
         }
 
         public string Type { get; set; }

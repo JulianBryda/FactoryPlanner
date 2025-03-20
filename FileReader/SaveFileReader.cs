@@ -19,16 +19,37 @@ namespace FactoryPlanner.FileReader
         public delegate void FinishHandler(object sender);
         public event FinishHandler OnFinish;
 
+        private static SaveFileReader? _loadedSaveFile;
+        public static SaveFileReader LoadedSaveFile
+        {
+            get
+            {
+                _loadedSaveFile ??= new SaveFileReader(null, true);
+                return _loadedSaveFile;
+            }
+            private set
+            {
+                _loadedSaveFile = value;
+            }
+        }
 
         public string Path { get; set; }
         public SaveFileHeader Header { get; set; }
         public SaveFileBody Body { get; set; }
 
-        public SaveFileReader(string path)
+        public SaveFileReader(string? path = null, bool blockThread = false)
         {
-            Path = path;
+            if (path != null)
+            {
+                Path = path;
+            }
+            else
+            {
+                Path = GetNewestSavePath();
+            }
+            LoadedSaveFile = this;
 
-            Task.Run(() =>
+            var task = Task.Run(() =>
             {
                 byte[] bytes = File.ReadAllBytes(Path);
                 MemoryStream stream = new(bytes);
@@ -57,22 +78,40 @@ namespace FactoryPlanner.FileReader
 
                 OnFinish?.Invoke(this);
             });
+
+            if (blockThread)
+                task.Wait();
         }
 
 
-        public ActCompObject? GetActCompObject(string typePath)
+        public List<ActCompObject> GetActCompObjects(int typePathHash)
         {
+            List<ActCompObject> objects = [];
             var persistantLevel = Body.Levels.Last();
-            int firstHash = typePath.GetHashCode();
 
             for (int i = 0; i < persistantLevel.ObjectHeaders.Length; i++)
             {
-                int secondHash = persistantLevel.ObjectHeaders[i].ActCompHeader.TypePath.GetHashCode();
+                int hash = persistantLevel.ObjectHeaders[i].ActCompHeader.TypePath.GetHashCode();
 
-                if (firstHash == secondHash)
-                {
+                if (typePathHash == hash)
+                    objects.Add(persistantLevel.ActCompObjects[i]);
+
+            }
+
+            return objects;
+        }
+
+        public ActCompObject? GetActCompObject(string pathName)
+        {
+            var persistantLevel = Body.Levels.Last();
+            int pathNameHash = pathName.GetHashCode();
+
+            for (int i = 0; i < persistantLevel.ObjectHeaders.Length; i++)
+            {
+                int hash = persistantLevel.ObjectHeaders[i].ActCompHeader.InstanceName.GetHashCode();
+
+                if (pathNameHash == hash)
                     return persistantLevel.ActCompObjects[i];
-                }
 
             }
 
@@ -118,6 +157,37 @@ namespace FactoryPlanner.FileReader
 
             inflaterStream.CopyTo(outputStream);
             return outputStream;
+        }
+
+        private static string GetNewestSavePath()
+        {
+            string? filePath = Environment.GetEnvironmentVariable("LocalAppdata");
+            if (filePath == null) throw new ArgumentNullException("Failed to get Path to %Localappdata%!");
+
+            filePath += "\\FactoryGame\\Saved\\SaveGames";
+
+            foreach (var dir in Directory.GetDirectories(filePath))
+            {
+                string dirName = System.IO.Path.GetFileName(dir);
+                if (dirName.All(char.IsDigit))
+                {
+                    filePath = dir;
+                    break;
+                }
+            }
+
+            DateTime lastWrite = DateTime.MinValue;
+            foreach (var file in Directory.GetFiles(filePath))
+            {
+                DateTime last = File.GetLastWriteTimeUtc(file);
+                if (last > lastWrite)
+                {
+                    lastWrite = last;
+                    filePath = file;
+                }
+            }
+
+            return filePath;
         }
     }
 }

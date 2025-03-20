@@ -8,7 +8,6 @@ using FactoryPlanner.Views;
 using System.Linq;
 
 [assembly: XmlnsDefinition("https://github.com/avaloniaui", "FactoryPlanner.Controls")]
-[assembly: XmlnsDefinition("https://github.com/avaloniaui", "FactoryPlanner.Controls.Navigation")]
 
 namespace FactoryPlanner
 {

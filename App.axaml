@@ -19,6 +19,8 @@
 			<FontFamily x:Key="Satisfontory">/Assets/Fonts/Satisfontory_v1.5.ttf#Satisfontory</FontFamily>
 			<ResourceDictionary.MergedDictionaries>
 				<ResourceInclude Source="/Controls/IconText.axaml" />
+				<ResourceInclude Source="/Controls/NavigationBar.axaml" />
+				<ResourceInclude Source="/Controls/TrainStationData.axaml" />
 			</ResourceDictionary.MergedDictionaries>
 		</ResourceDictionary>
 	</Application.Resources>

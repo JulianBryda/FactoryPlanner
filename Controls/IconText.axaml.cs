@@ -15,7 +15,7 @@ public class IconText : TemplatedControl
         AvaloniaProperty.Register<IconText, string>(nameof(Text));
 
     public static readonly StyledProperty<Thickness> ImageMarginProperty =
-        AvaloniaProperty.Register<IconText, Thickness>(nameof(ImageMarginProperty));
+        AvaloniaProperty.Register<IconText, Thickness>(nameof(ImageMargin));
 
     public Bitmap? ImageSource
     {

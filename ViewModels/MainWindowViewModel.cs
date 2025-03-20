@@ -21,17 +21,27 @@ namespace FactoryPlanner.ViewModels
     public partial class MainWindowViewModel : ReactiveObject, IScreen
     {
         public RoutingState Router { get; } = new RoutingState();
-
-        public ReactiveCommand<Unit, IRoutableViewModel> GoNext { get; }
-
-        public ReactiveCommand<Unit, IRoutableViewModel> GoBack => Router.NavigateBack;
+        public ReactiveCommand<string, Unit> Navigate { get; }
 
 
         public MainWindowViewModel()
         {
-            GoNext = ReactiveCommand.CreateFromObservable(
-                       () => Router.Navigate.Execute(new TrainStationViewModel(this))
-                   );
+            Navigate = ReactiveCommand.Create<string>(NavigateToView);
+
+            // preload SaveFile 
+            _ = new SaveFileReader();
+        }
+
+        private void NavigateToView(string viewName)
+        {
+            switch (viewName)
+            {
+                case "TrainStation":
+                    Router.Navigate.Execute(new TrainStationViewModel(this));
+                    break;
+                default:
+                    throw new KeyNotFoundException($"No view found with name \"{viewName}\"!");
+            }
         }
 
     }

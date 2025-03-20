@@ -1,13 +1,16 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
+using Avalonia.ReactiveUI;
+using ReactiveUI;
 
 namespace FactoryPlanner;
 
-public partial class DashboardView : UserControl
+public partial class DashboardView : ReactiveUserControl<UserControl>
 {
     public DashboardView()
     {
-        InitializeComponent();
+        this.WhenActivated(disposables => { });
+        AvaloniaXamlLoader.Load(this);
     }
 }

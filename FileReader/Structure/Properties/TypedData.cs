@@ -28,12 +28,12 @@ namespace FactoryPlanner.FileReader.Structure.Properties
     {
         public InventoryItem(ref BinaryReader reader) : base(ref reader)
         {
-            Padding = reader.ReadUInt32();
-            ItemName = ReadString(ref reader);
-            HasFlag = reader.ReadUInt32();
-            Padding2 = reader.ReadUInt32();
-            ItemType = ReadString(ref reader);
-            PropertySize = reader.ReadUInt32();
+            Reference = new ObjectReference(ref reader);
+            State = reader.ReadUInt32();
+            if (State == 0) return;
+
+            ItemState = new ObjectReference(ref reader);
+            ItemStateLength = reader.ReadUInt32();
 
             List<PropertyListEntry> properties = [];
             do
@@ -44,13 +44,19 @@ namespace FactoryPlanner.FileReader.Structure.Properties
             Properties = [.. properties];
         }
 
-        public uint Padding { get; set; }
-        public string ItemName { get; set; }
-        public uint HasFlag { get; set; }
-        public uint Padding2 { get; set; }
-        public string ItemType { get; set; }
-        public uint PropertySize { get; set; }
-        public PropertyListEntry[] Properties { get; set; }
+        public ObjectReference Reference { get; set; }
+        public uint State { get; set; }
+        public ObjectReference? ItemState { get;set; }
+        public uint ItemStateLength { get; set; }
+        public PropertyListEntry[] Properties { get; set; } = [];
+    }
+
+    internal class Color(ref BinaryReader reader) : Property(ref reader)
+    {
+        public byte B { get; set; } = reader.ReadByte();
+        public byte G { get; set; } = reader.ReadByte();
+        public byte R { get; set; } = reader.ReadByte();
+        public byte A { get; set; } = reader.ReadByte();
     }
 
     internal class LinearColor(ref BinaryReader reader) : Property(ref reader)
@@ -81,6 +87,20 @@ namespace FactoryPlanner.FileReader.Structure.Properties
         public double X { get; set; } = reader.ReadDouble();
         public double Y { get; set; } = reader.ReadDouble();
         public double Z { get; set; } = reader.ReadDouble();
+    }
+
+    internal class Vector2D(ref BinaryReader reader) : Property(ref reader)
+    {
+        public double X { get; set; } = reader.ReadDouble();
+        public double Y { get; set; } = reader.ReadDouble();
+    }
+
+    internal class IntVector4(ref BinaryReader reader) : Property(ref reader)
+    {
+        public int X { get; set; } = reader.ReadInt32();
+        public int Y { get; set; } = reader.ReadInt32();
+        public int Z { get; set; } = reader.ReadInt32();
+        public int W { get; set; } = reader.ReadInt32();
     }
 
     internal class DateTime(ref BinaryReader reader) : Property(ref reader)

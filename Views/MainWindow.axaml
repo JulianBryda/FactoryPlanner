@@ -19,10 +19,19 @@
 
 	<Grid>
 		<Grid.RowDefinitions>
+			<RowDefinition Height="100" />
 			<RowDefinition Height="*" />
-			<RowDefinition Height="Auto" />
 		</Grid.RowDefinitions>
-		<rxui:RoutedViewHost Grid.Row="0" Router="{Binding Router}">
+		
+
+		<Border Background="#121216">
+			<Border.Effect>
+				<DropShadowEffect Color="Black" BlurRadius="20" />
+			</Border.Effect>
+			<NavigationBar Command="{Binding Navigate}" />
+		</Border>
+		
+		<rxui:RoutedViewHost Grid.Row="1" Router="{Binding Router}">
 			<rxui:RoutedViewHost.DefaultContent>
 				<TextBlock Text="Default content"
                            HorizontalAlignment="Center"
@@ -33,19 +42,6 @@
 				<app:AppViewLocator />
 			</rxui:RoutedViewHost.ViewLocator>
 		</rxui:RoutedViewHost>
-		<StackPanel Grid.Row="1" Orientation="Horizontal" Margin="15">
-			<StackPanel.Styles>
-				<Style Selector="StackPanel > :is(Control)">
-					<Setter Property="Margin" Value="2"/>
-				</Style>
-				<Style Selector="StackPanel > TextBlock">
-					<Setter Property="VerticalAlignment" Value="Center"/>
-				</Style>
-			</StackPanel.Styles>
-			<Button Content="Go next" Command="{Binding GoNext}" />
-			<Button Content="Go back" Command="{Binding GoBack}" />
-			<TextBlock Text="{Binding Router.NavigationStack.Count}" />
-		</StackPanel>
 	</Grid>
 
 </Window>

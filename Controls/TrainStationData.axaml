@@ -1,0 +1,42 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="using:FactoryPlanner.Controls">
+
+  <!--
+    Additional resources 
+    Using Control Themes:
+         https://docs.avaloniaui.net/docs/basics/user-interface/styling/control-themes
+    Using Theme Variants:
+         https://docs.avaloniaui.net/docs/guides/styles-and-resources/how-to-use-theme-variants
+  -->
+  
+  <Design.PreviewWith>
+    <StackPanel Width="400" Spacing="10">      
+        <StackPanel Background="{DynamicResource SystemRegionBrush}">
+          <controls:TrainStationData />
+        </StackPanel>
+    </StackPanel>
+  </Design.PreviewWith>
+ 
+  <ControlTheme x:Key="{x:Type controls:TrainStationData}" TargetType="controls:TrainStationData">
+    <Setter Property="Template">
+      <ControlTemplate>
+		  <Border>
+			  <Grid ColumnDefinitions="2*, *, 3*" RowDefinitions="*, *" >
+				  <Image Margin="0 0 16 0" Grid.RowSpan="2" Source="/Assets/Icons/Freight_Platform.png" />
+
+				  <Border Grid.RowSpan="2" Grid.Column="1" Grid.ColumnSpan="2" Height="1" Background="Gray" Margin="8 0 8 0" VerticalAlignment="Center" />
+
+				  <Image Margin="3" Grid.Column="1" Source="/Assets/Icons/Arrow_Down.png" />
+				  <Image Margin="3" Grid.Column="1" Grid.Row="1" Source="/Assets/Icons/Arrow_Up.png" />
+				  
+				  <TextBlock Grid.Column="2" Text="{TemplateBinding InText}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+				  <TextBlock Grid.Column="2" Grid.Row="1" Text="{TemplateBinding OutText}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+
+
+			  </Grid>
+		  </Border>
+      </ControlTemplate>
+    </Setter>
+  </ControlTheme>
+</ResourceDictionary>

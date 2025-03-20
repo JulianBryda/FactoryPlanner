@@ -266,7 +266,7 @@ namespace FactoryPlanner.FileReader.Structure
         public ObjectReference ParentObjectReference { get; set; }
         public uint ComponentCount { get; set; }
         public ObjectReference[] Components { get; set; }
-        public Property[] Properties { get; set; } = [];
+        public PropertyListEntry[] Properties { get; set; } = [];
         public byte[] TrailingBytes { get; set; } = [];
     }
 
@@ -276,12 +276,18 @@ namespace FactoryPlanner.FileReader.Structure
         {
             long newPosition = reader.BaseStream.Position + Size; // current position + size of object
 
-
+            List<PropertyListEntry> properties = [];
+            do
+            {
+                properties.Add(new PropertyListEntry(ref reader));
+            }
+            while (properties.Last().Name != "None");
+            Properties = [.. properties];
 
             reader.BaseStream.Position = newPosition;
         }
 
-        public Property[] Properties { get; set; } = [];
+        public PropertyListEntry[] Properties { get; set; } = [];
         public byte[] TrailingBytes { get; set; } = [];
     }
 
