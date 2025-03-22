@@ -234,6 +234,7 @@ namespace FactoryPlanner.FileReader.Structure
         public uint SaveVersion { get; set; }
         public uint Flag { get; set; }
         public uint Size { get; set; }
+        public PropertyListEntry[] Properties { get; set; } = [];
     }
 
     internal class ActorObject : ActCompObject
@@ -266,7 +267,6 @@ namespace FactoryPlanner.FileReader.Structure
         public ObjectReference ParentObjectReference { get; set; }
         public uint ComponentCount { get; set; }
         public ObjectReference[] Components { get; set; }
-        public PropertyListEntry[] Properties { get; set; } = [];
         public byte[] TrailingBytes { get; set; } = [];
     }
 
@@ -287,7 +287,6 @@ namespace FactoryPlanner.FileReader.Structure
             reader.BaseStream.Position = newPosition;
         }
 
-        public PropertyListEntry[] Properties { get; set; } = [];
         public byte[] TrailingBytes { get; set; } = [];
     }
 
