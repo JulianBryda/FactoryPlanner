@@ -20,20 +20,19 @@
 				<Border Width="250" CornerRadius="20" Background="Gray" Opacity="0.2" Padding="8" >
 					<StackPanel Opacity="5">
 
-						<TextBlock Text="Hamburg" FontSize="18" FontWeight="Bold" Opacity="0.9" TextWrapping="Wrap" HorizontalAlignment="Center" />
+						<TextBlock Text="{Binding Name}" FontSize="18" FontWeight="Bold" Opacity="0.9" TextWrapping="Wrap" HorizontalAlignment="Center" />
 						<Border Margin="0 8 0 8" Background="Gray" VerticalAlignment="Bottom" Height="1" />
 
 						<Grid ColumnDefinitions="Auto, *, Auto, Auto, *">
 							<TextBlock FontWeight="Bold" Text="2" VerticalAlignment="Center" />
 							<Image Grid.Column="1" Width="32" Source="/Assets/Icons/Electric_Locomotive.png"/>
 							<Border Grid.Column="2" Width="1" Background="Gray" HorizontalAlignment="Right" />
-							<TextBlock Grid.Column="3" FontWeight="Bold" Margin="8 0 0 0" Text="2" VerticalAlignment="Center" />
+							<TextBlock Text="{Binding DockingStations.Count}" Grid.Column="3" FontWeight="Bold" Margin="8 0 0 0" VerticalAlignment="Center" />
 							<Image Grid.Column="4" Width="32" Source="/Assets/Icons/Freight_Car.png"/>
 						</Grid>
 
 						<TextBlock Margin="0 8 0 0" Text="Freight" FontSize="16" FontWeight="Bold" Opacity="0.9" TextWrapping="Wrap" HorizontalAlignment="Center" />
 						<Border Margin="0 8 0 8" Background="Gray" VerticalAlignment="Bottom" Height="1" />
-
 
 						<ListBox ItemsSource="{Binding DockingStations}">
 							<ListBox.ItemTemplate>

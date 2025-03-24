@@ -6,10 +6,13 @@ using FactoryPlanner.Models;
 using ReactiveUI;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices.Marshalling;
+using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -31,12 +34,16 @@ namespace FactoryPlanner.ViewModels
 
         void LoadTrainStations(int startIndex, int count)
         {
-            var stations = _saveFileReader.GetActCompObjects(TypePaths.TrainStation);
-            for (int i = startIndex; i < startIndex + count && i < stations.Count; i++)
+            var stationIdentifiers = GetTrainStationIdentifiers();
+
+            for (int i = startIndex; i < startIndex + count && i < stationIdentifiers.Count(); i++)
             {
-                ActorObject station = (ActorObject)stations[i];
+                ActorObject stationIdentifier = stationIdentifiers[i];
+                ActorObject station = GetStationFromIdentifier(stationIdentifier);
+
                 TrainStations.Add(new TrainStation()
                 {
+                    Name = GetTrainStationName(stationIdentifier),
                     DockingStations = LoadConnectedDockingStations(station)
                 });
             }
@@ -241,6 +248,39 @@ namespace FactoryPlanner.ViewModels
             }
 
             return objects;
+        }
+
+        private List<ActorObject> GetTrainStationIdentifiers()
+        {
+            ActorObject railRoadSubSystem = (ActorObject?)_saveFileReader.GetActCompObject("Persistent_Level:PersistentLevel.RailroadSubsystem") ?? throw new NullReferenceException("Failed to load railSubSystem!");
+            PropertyListEntry identifierEntry = railRoadSubSystem.Properties.FirstOrDefault() ?? throw new NullReferenceException("Failed to load TrainStationIdentifiers!");
+            ArrayProperty identifiersProperty = (ArrayProperty?)identifierEntry.Property ?? throw new NullReferenceException("Failed to load IdentifierProperty!");
+
+            List<ActorObject> identifiers = [];
+            foreach (SimpleObjectProperty property in identifiersProperty.Properties.Cast<SimpleObjectProperty>())
+            {
+                ActorObject identifier = (ActorObject?)_saveFileReader.GetActCompObject(property.Value.PathName) ?? throw new NullReferenceException("This should not fail!");
+                identifiers.Add(identifier);
+            }
+
+            return identifiers;
+        }
+
+        private ActorObject GetStationFromIdentifier(ActorObject stationIdentifier)
+        {
+            ObjectProperty stationProperty = (ObjectProperty?)stationIdentifier.Properties.First().Property ?? throw new NullReferenceException("Objectproperty mStation of StationIdentifier is null!");
+            string stationPathName = stationProperty.Reference.PathName;
+            ActorObject station = (ActorObject?)_saveFileReader.GetActCompObject(stationPathName) ?? throw new NullReferenceException("Stationidentifier has no Station!");
+
+            return station;
+        }
+
+        private static string GetTrainStationName(ActorObject stationIdentifier)
+        {
+            PropertyListEntry stationNameProperty = stationIdentifier.Properties.Last();
+            TextProperty textProperty = (TextProperty?)stationNameProperty.Property ?? throw new NullReferenceException("StationIdentifier has no StationName!");
+
+            return textProperty.Value;
         }
 
         private static PropertyListEntry? GetPropertyByName(ActCompObject obj, string name)
