@@ -8,7 +8,7 @@
 			 x:DataType="vm:TrainStationViewModel"
              x:Class="FactoryPlanner.TrainStationView" Margin="10">
 
-	<ListBox ItemsSource="{Binding TrainStations}" >
+	<ListBox ItemsSource="{Binding TrainStations}" ScrollViewer.HorizontalScrollBarVisibility="Auto" >
 		<ListBox.ItemsPanel>
 			<ItemsPanelTemplate>
 				<StackPanel Orientation="Horizontal" />
@@ -17,7 +17,7 @@
 
 		<ListBox.ItemTemplate>
 			<DataTemplate>
-				<Border Width="250" CornerRadius="20" Background="Gray" Opacity="0.2" Padding="8" >
+				<Border Width="350" CornerRadius="20" Background="Gray" Opacity="0.2" Padding="8" >
 					<StackPanel Opacity="5">
 
 						<TextBlock Text="{Binding Name}" FontSize="18" FontWeight="Bold" Opacity="0.9" TextWrapping="Wrap" HorizontalAlignment="Center" />
@@ -37,7 +37,46 @@
 						<ListBox ItemsSource="{Binding DockingStations}">
 							<ListBox.ItemTemplate>
 								<DataTemplate>
-									<controls:TrainStationData InText="{Binding ProductionRateText}" OutText="" FontSize="12" />
+									<Grid ColumnDefinitions="0.4*, *, 0.4*, *" RowDefinitions="*, Auto" >
+										<Image Margin="3" Grid.Column="0" Source="/Assets/Icons/Arrow_Down.png" />
+										<Image Margin="3" Grid.Column="2" Source="/Assets/Icons/Arrow_Up.png" />
+
+										<TextBlock Grid.Column="1" Foreground="{Binding IncomingTextBrush}" Text="{Binding IncomingRate, StringFormat={}{0:N2}/min}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+										<TextBlock Grid.Column="3" Text="{Binding OutgoingRate, StringFormat={}{0:N2}/min}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+
+										<ListBox Grid.Row="1" Grid.Column="0" ItemsSource="{Binding IncomingItems}" >
+											<ListBox.ItemTemplate>
+												<DataTemplate>
+													<Image Source="{Binding Icon}" />
+												</DataTemplate>
+											</ListBox.ItemTemplate>
+										</ListBox>
+
+										<ListBox Grid.Row="1" Grid.Column="2" ItemsSource="{Binding OutgoingItems}" >
+											<ListBox.ItemTemplate>
+												<DataTemplate>
+													<Image Source="{Binding Icon}" />
+												</DataTemplate>
+											</ListBox.ItemTemplate>
+										</ListBox>
+
+										<ListBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding IncomingItems}" >
+											<ListBox.ItemTemplate>
+												<DataTemplate>
+														<TextBlock Text="{Binding Rate, StringFormat={}{0:N2}/min}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+												</DataTemplate>
+											</ListBox.ItemTemplate>
+										</ListBox>
+
+										<ListBox Grid.Row="1" Grid.Column="3" ItemsSource="{Binding OutgoingItems}" >
+											<ListBox.ItemTemplate>
+												<DataTemplate>
+														<TextBlock Text="{Binding Rate, StringFormat={}{0:N2}/min}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+												</DataTemplate>
+											</ListBox.ItemTemplate>
+										</ListBox>
+
+									</Grid>
 								</DataTemplate>
 							</ListBox.ItemTemplate>
 						</ListBox>

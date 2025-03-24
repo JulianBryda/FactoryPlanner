@@ -8,28 +8,30 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Threading;
+using log4net;
+using System.Security.Cryptography;
 
 namespace FactoryPlanner.FileReader
 {
     internal class SaveFileReader
     {
         public delegate void ProgressUpdateHandler(object sender, float value);
-        public event ProgressUpdateHandler OnProgressUpdate;
+        public event ProgressUpdateHandler? OnProgressUpdate;
 
         public delegate void FinishHandler(object sender);
-        public event FinishHandler OnFinish;
+        public event FinishHandler? OnFinish;
 
-        private static SaveFileReader? _loadedSaveFile;
+        private static SaveFileReader? s_loadedSaveFile;
         public static SaveFileReader LoadedSaveFile
         {
             get
             {
-                _loadedSaveFile ??= new SaveFileReader(null, true);
-                return _loadedSaveFile;
+                s_loadedSaveFile ??= new SaveFileReader(null, true);
+                return s_loadedSaveFile;
             }
             private set
             {
-                _loadedSaveFile = value;
+                s_loadedSaveFile = value;
             }
         }
 
@@ -37,17 +39,15 @@ namespace FactoryPlanner.FileReader
         public SaveFileHeader Header { get; set; }
         public SaveFileBody Body { get; set; }
 
+
+        private static readonly ILog s_log = LogManager.GetLogger(typeof(SaveFileReader));
+
         public SaveFileReader(string? path = null, bool blockThread = false)
         {
-            if (path != null)
-            {
-                Path = path;
-            }
-            else
-            {
-                Path = GetNewestSavePath();
-            }
+            Path = path ?? GetNewestSavePath();
             LoadedSaveFile = this;
+
+            s_log.Info($"Loading save file \"{Path}\"...");
 
             var task = Task.Run(() =>
             {
@@ -55,64 +55,98 @@ namespace FactoryPlanner.FileReader
                 MemoryStream stream = new(bytes);
                 BinaryReader reader = new(stream);
 
+                s_log.Info("Loading save file header...");
                 Header = new SaveFileHeader(ref reader);
+                s_log.Info("Successfully loaded save file header!");
 
                 MemoryStream bodyStream = new();
                 BinaryReader bodyReader = new(bodyStream);
 
+                s_log.Info("Inflating chunks...");
+                int chunkCount = 0;
                 while (reader.BaseStream.Position < reader.BaseStream.Length)
                 {
                     var memStream = DecompressZlib(new SaveFileBodyCompressed(ref reader).CompressedBytes);
                     memStream.Position = 0;
                     memStream.CopyTo(bodyStream);
                     memStream.Dispose();
+
+                    chunkCount++;
                 }
                 stream.Dispose();
                 reader.Dispose();
+                s_log.Info($"Successfully inflated {chunkCount} chunks!");
 
                 bodyStream.Position = 0;
 
                 Task.Run(() => ProgressUpdater(ref bodyStream));
 
+                s_log.Info("Loading save file body...");
                 Body = new SaveFileBody(ref bodyReader);
+                s_log.Info("Successfully loaded save file body!");
 
                 OnFinish?.Invoke(this);
+
+                s_log.Info("Finished loading save file!");
             });
 
             if (blockThread)
                 task.Wait();
         }
 
+        public enum Type
+        {
+            TypePath,
+            RootObject,
+            InstanceName
+        }
 
-        public List<ActCompObject> GetActCompObjects(int typePathHash)
+
+        public List<ActCompObject> GetActCompObjects(string value, Type type = Type.TypePath) => GetActCompObjects(value.GetHashCode(), type);
+        public List<ActCompObject> GetActCompObjects(int value, Type type = Type.TypePath)
         {
             List<ActCompObject> objects = [];
-            var persistantLevel = Body.Levels.Last();
 
-            for (int i = 0; i < persistantLevel.ObjectHeaders.Length; i++)
+            foreach (var level in Body.Levels)
             {
-                int hash = persistantLevel.ObjectHeaders[i].ActCompHeader.TypePath.GetHashCode();
+                for (int i = 0; i < level.ObjectHeaders.Length; i++)
+                {
+                    int hash = type switch
+                    {
+                        Type.TypePath => level.ObjectHeaders[i].ActCompHeader.TypePath.GetHashCode(),
+                        Type.RootObject => level.ObjectHeaders[i].ActCompHeader.RootObject.GetHashCode(),
+                        Type.InstanceName => level.ObjectHeaders[i].ActCompHeader.InstanceName.GetHashCode(),
+                        _ => throw new NotImplementedException()
+                    };
 
-                if (typePathHash == hash)
-                    objects.Add(persistantLevel.ActCompObjects[i]);
+                    if (value == hash)
+                        objects.Add(level.ActCompObjects[i]);
 
+                }
             }
 
             return objects;
         }
 
-        public ActCompObject? GetActCompObject(string pathName)
+        public ActCompObject? GetActCompObject(string value, Type type = Type.InstanceName) => GetActCompObject(value.GetHashCode(), type);
+        public ActCompObject? GetActCompObject(int value, Type type = Type.InstanceName)
         {
-            var persistantLevel = Body.Levels.Last();
-            int pathNameHash = pathName.GetHashCode();
-
-            for (int i = 0; i < persistantLevel.ObjectHeaders.Length; i++)
+            foreach (var level in Body.Levels)
             {
-                int hash = persistantLevel.ObjectHeaders[i].ActCompHeader.InstanceName.GetHashCode();
+                for (int i = 0; i < level.ObjectHeaders.Length; i++)
+                {
+                    int hash = type switch
+                    {
+                        Type.TypePath => level.ObjectHeaders[i].ActCompHeader.TypePath.GetHashCode(),
+                        Type.RootObject => level.ObjectHeaders[i].ActCompHeader.RootObject.GetHashCode(),
+                        Type.InstanceName => level.ObjectHeaders[i].ActCompHeader.InstanceName.GetHashCode(),
+                        _ => throw new NotImplementedException()
+                    };
 
-                if (pathNameHash == hash)
-                    return persistantLevel.ActCompObjects[i];
+                    if (value == hash)
+                        return level.ActCompObjects[i];
 
+                }
             }
 
             return null;
@@ -180,7 +214,7 @@ namespace FactoryPlanner.FileReader
             foreach (var file in Directory.GetFiles(filePath))
             {
                 DateTime last = File.GetLastWriteTimeUtc(file);
-                if (last > lastWrite)
+                if (System.IO.Path.GetExtension(file) == ".sav" && last > lastWrite)
                 {
                     lastWrite = last;
                     filePath = file;

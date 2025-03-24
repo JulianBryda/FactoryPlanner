@@ -1,17 +1,26 @@
 ﻿using Avalonia;
 using Avalonia.ReactiveUI;
+using log4net;
+using log4net.Appender;
+using log4net.Config;
+using log4net.Repository;
+using ReactiveUI;
 using System;
+using System.Diagnostics;
+using System.IO;
 
 namespace FactoryPlanner
 {
     internal sealed class Program
     {
-        // Initialization code. Don't use any Avalonia, third-party APIs or any
-        // SynchronizationContext-reliant code before AppMain is called: things aren't initialized
-        // yet and stuff might break.
         [STAThread]
-        public static void Main(string[] args) => BuildAvaloniaApp()
+        public static void Main(string[] args)
+        {
+            XmlConfigurator.Configure(new FileInfo(".\\log4net.config"));
+
+            BuildAvaloniaApp()
             .StartWithClassicDesktopLifetime(args);
+        }
 
         // Avalonia configuration, don't remove; also used by visual designer.
         public static AppBuilder BuildAvaloniaApp()

@@ -12,6 +12,18 @@
   
     <Application.Styles>
         <semi:SemiTheme Locale="de-AT" />
+		
+		<!-- Disable Hover Effect -->
+		<Style Selector="ListBoxItem:pointerover">
+			<Setter Property="Background" Value="Transparent"/>
+			<Setter Property="BorderBrush" Value="Transparent"/>
+		</Style>
+
+		<!-- Disable Selection Effect -->
+		<Style Selector="ListBoxItem:selected">
+			<Setter Property="Background" Value="Transparent"/>
+			<Setter Property="BorderBrush" Value="Transparent"/>
+		</Style>
     </Application.Styles>
 
 	<Application.Resources>
@@ -20,7 +32,6 @@
 			<ResourceDictionary.MergedDictionaries>
 				<ResourceInclude Source="/Controls/IconText.axaml" />
 				<ResourceInclude Source="/Controls/NavigationBar.axaml" />
-				<ResourceInclude Source="/Controls/TrainStationData.axaml" />
 			</ResourceDictionary.MergedDictionaries>
 		</ResourceDictionary>
 	</Application.Resources>

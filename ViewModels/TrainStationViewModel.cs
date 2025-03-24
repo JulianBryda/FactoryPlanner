@@ -1,4 +1,7 @@
-﻿using DynamicData;
+﻿using Avalonia;
+using Avalonia.Controls;
+using DynamicData;
+using FactoryPlanner.Assets;
 using FactoryPlanner.FileReader;
 using FactoryPlanner.FileReader.Structure;
 using FactoryPlanner.FileReader.Structure.Properties;
@@ -7,14 +10,9 @@ using ReactiveUI;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices.Marshalling;
-using System.Runtime.Serialization.Formatters.Binary;
-using System.Text;
-using System.Threading.Tasks;
+using System.Runtime.CompilerServices;
 
 namespace FactoryPlanner.ViewModels
 {
@@ -36,7 +34,7 @@ namespace FactoryPlanner.ViewModels
         {
             var stationIdentifiers = GetTrainStationIdentifiers();
 
-            for (int i = startIndex; i < startIndex + count && i < stationIdentifiers.Count(); i++)
+            for (int i = startIndex; i < startIndex + count && i < stationIdentifiers.Count; i++)
             {
                 ActorObject stationIdentifier = stationIdentifiers[i];
                 ActorObject station = GetStationFromIdentifier(stationIdentifier);
@@ -89,48 +87,58 @@ namespace FactoryPlanner.ViewModels
         /// <param name="pathName">PathName of the docking station</param>
         /// <returns>DockingStation, if wrong ActorObject returns null</returns>
         /// <exception cref="ArgumentException"></exception>
-        DockingStation? LoadDockingStation(ActorObject station, string pathName)
+        DockingStation? LoadDockingStation(ActorObject dockingStation, string pathName)
         {
-            PropertyListEntry? propertyEntry = GetPropertyByName(station, "mInventory");
+            PropertyListEntry? propertyEntry = GetPropertyByName(dockingStation, "mInventory");
             if (propertyEntry == null) return null; // ActorObjet is not a docking station
 
-            List<ActorObject> buildings = GetConnectedBuildings(station, pathName, PortType.Input);
-            float combinedProdRate = 0;
-            foreach (ActorObject building in buildings)
-            {
-                if (building.Properties.Length >= 8 && building.Properties[7].Property is FloatProperty floatProperty)
-                {
-                    float prodRate = 60000 / (floatProperty.Value * 10);
-
-                    combinedProdRate += float.IsInfinity(prodRate) ? 0 : prodRate;
-                }
-            }
+            var neededItems = GetDockingStationItemsByPort(dockingStation, pathName, PortType.Output);
+            var outgoingItems = GetDockingStationItemsByPort(dockingStation, pathName, PortType.Input);
 
             return new DockingStation()
             {
-                ProductionRate = combinedProdRate
+                IncomingItems = [],
+                OutgoingItems = outgoingItems,
+                NeededItems = neededItems
             };
+        }
 
+        List<DockingStation.Item> GetDockingStationItemsByPort(ActorObject dockingStation, string pathName, PortType portType)
+        {
+            List<ActorObject> buildings = GetConnectedBuildings(dockingStation, pathName, portType);
 
-            // disabled for now
+            List<DockingStation.Item> items = [];
+            foreach (ActorObject building in buildings)
+            {
+                if (GetPropertyByName(building, "mCurrentRecipe")?.Property is ObjectProperty itemProperty)
+                {
+                    string itemPathName = itemProperty.Reference.PathName;
 
-            //ObjectProperty objProp = (ObjectProperty)propertyEntry.Property;
-            //ComponentObject inventory = (ComponentObject)_saveFileReader.GetActCompObject(objProp.Reference.PathName);
-            //ArrayProperty arr = (ArrayProperty)inventory.Properties[0].Property;
-            //SimpleStructProperty str = (SimpleStructProperty)arr.Properties[0];
+                    Recipe? recipe = AssetManager.GetRecipe(itemPathName);
+                    if (recipe == null) continue;
 
-            //for (int i = 0; i < str.Data.Length; i += 2)
-            //{
-            //    PropertyListEntry invEntry = (PropertyListEntry)str.Data[i];
-            //    PropertyListEntry amountEntry = (PropertyListEntry)str.Data[i + 1];
+                    FloatProperty? currentPotential = (FloatProperty?)GetPropertyByName(building, "mCurrentPotential")?.Property;
 
-            //    StructProperty inv = (StructProperty)invEntry.Property;
-            //    IntProperty amount = (IntProperty)amountEntry.Property;
+                    float prodRate = 60f / recipe.Time * recipe.Products.First().Amount;
+                    if (currentPotential != null) prodRate *= currentPotential.Value;
 
-            //    InventoryItem item = (InventoryItem)inv.Properties[0];
+                    if (items.Find(o => o.ItemPathName == itemPathName) is DockingStation.Item item)
+                    {
+                        item.Rate += prodRate;
+                    }
+                    else
+                    {
+                        items.Add(new DockingStation.Item()
+                        {
+                            Icon = new($".\\Assets\\Icons\\Items\\{GetItemName(itemPathName)}.png"),
+                            ItemPathName = itemPathName,
+                            Rate = prodRate,
+                        });
+                    }
+                }
+            }
 
-            //    //Debug.WriteLine($"{item.Reference.PathName} {amount.Value}");
-            //}
+            return items;
         }
 
         List<ActorObject> GetConnectedBuildings(ActorObject building, string buildingPathName, PortType portType)
@@ -292,6 +300,12 @@ namespace FactoryPlanner.ViewModels
             }
 
             return null;
+        }
+        
+        private static string GetItemName(string itemPath)
+        {
+            string trimed = itemPath[(itemPath.LastIndexOf('.') + 1)..].Replace("Recipe_", "").Replace("Alternate_", "");
+            return trimed[..trimed.IndexOf('_')];
         }
 
 

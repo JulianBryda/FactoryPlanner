@@ -41,7 +41,6 @@ namespace FactoryPlanner.FileReader.Structure
             List<Level> levels = [];
             for (int i = 0; i <= SublevelCount; i++) // one more level than sublevel count, last one ist persistent level
             {
-                Debug.WriteLine($"Sublevel: {i} Stream Position: {reader.BaseStream.Position}");
                 levels.Add(new Level(ref reader, i == SublevelCount));
             }
 

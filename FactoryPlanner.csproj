@@ -10,27 +10,11 @@
 
   <ItemGroup>
 	  <AvaloniaResource Include="Assets\**" />
-	  <None Include="Assets\**">
+	  <None Update="Assets\**\*">
 		  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 	  </None>
   </ItemGroup>
-
-  <ItemGroup>
-    <AvaloniaResource Remove="Assets\AssetManager.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Remove="Assets\Icons\Arrow_Down.png" />
-    <None Remove="Assets\Icons\Arrow_Up.png" />
-    <None Remove="Assets\Icons\Electric_Locomotive.png" />
-    <None Remove="Assets\Icons\Fluid_Freight_Platform.png" />
-    <None Remove="Assets\Icons\Freight_Car.png" />
-    <None Remove="Assets\Icons\Freight_Platform.png" />
-    <None Remove="Assets\Icons\Playtime.png" />
-    <None Remove="Assets\Icons\Refinery.png" />
-    <None Remove="Assets\Icons\Train_Station.png" />
-  </ItemGroup>
-
+	
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="11.2.5" />
     <PackageReference Include="Avalonia.Desktop" Version="11.2.5" />
@@ -43,6 +27,7 @@
       <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
     </PackageReference>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <PackageReference Include="log4net" Version="3.0.4" />
     <PackageReference Include="Semi.Avalonia" Version="11.2.1.5" />
     <PackageReference Include="SharpZipLib" Version="1.4.2" />
   </ItemGroup>
@@ -54,5 +39,11 @@
     <Compile Update="Views\DashboardView.axaml.cs">
       <DependentUpon>DashboardView.axaml</DependentUpon>
     </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="log4net.config">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 </Project>
