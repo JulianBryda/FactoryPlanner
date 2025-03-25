@@ -1,0 +1,85 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="using:FactoryPlanner.Controls">
+
+	<!--
+    Additional resources 
+    Using Control Themes:
+         https://docs.avaloniaui.net/docs/basics/user-interface/styling/control-themes
+    Using Theme Variants:
+         https://docs.avaloniaui.net/docs/guides/styles-and-resources/how-to-use-theme-variants
+  -->
+
+	<ControlTheme x:Key="{x:Type controls:TrainStationCard}" TargetType="controls:TrainStationCard">
+		<Setter Property="Template">
+			<Setter.Value>
+				<ControlTemplate TargetType="controls:TrainStationCard" >
+					<Border Width="350" CornerRadius="20" Background="Gray" Opacity="0.2" Padding="8" >
+						<StackPanel Opacity="5">
+							<TextBlock Text="{Binding TrainStation.Name, RelativeSource={RelativeSource TemplatedParent}}" FontSize="18" FontWeight="Bold" Opacity="0.9" TextWrapping="Wrap" HorizontalAlignment="Center" />
+							<Border Margin="0 8 0 8" Background="Gray" VerticalAlignment="Bottom" Height="1" />
+
+							<Grid ColumnDefinitions="Auto, *, Auto, Auto, *">
+								<TextBlock FontWeight="Bold" Text="2" VerticalAlignment="Center" />
+								<Image Grid.Column="1" Width="32" Source="/Assets/Icons/Electric_Locomotive.png"/>
+								<Border Grid.Column="2" Width="1" Background="Gray" HorizontalAlignment="Right" />
+								<TextBlock Text="{Binding TrainStation.DockingStations.Count, RelativeSource={RelativeSource TemplatedParent}}" Grid.Column="3" FontWeight="Bold" Margin="8 0 0 0" VerticalAlignment="Center" />
+								<Image Grid.Column="4" Width="32" Source="/Assets/Icons/Freight_Car.png"/>
+							</Grid>
+
+							<TextBlock Margin="0 8 0 0" Text="Freight" FontSize="16" FontWeight="Bold" Opacity="0.9" TextWrapping="Wrap" HorizontalAlignment="Center" />
+							<Border Margin="0 8 0 8" Background="Gray" VerticalAlignment="Bottom" Height="1" />
+
+							<ItemsControl ItemsSource="{Binding TrainStation.DockingStations, RelativeSource={RelativeSource TemplatedParent}}">
+								<ItemsControl.ItemTemplate>
+									<DataTemplate>
+										<Grid ColumnDefinitions="0.4*, *, 0.4*, *" RowDefinitions="*, Auto" >
+											<Image Margin="3" Grid.Column="0" Source="/Assets/Icons/Arrow_Down.png" />
+											<Image Margin="3" Grid.Column="2" Source="/Assets/Icons/Arrow_Up.png" />
+
+											<TextBlock Grid.Column="1" Foreground="{Binding IncomingTextBrush}" Text="{Binding IncomingRate, StringFormat={}{0:N2}/min}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+											<TextBlock Grid.Column="3" Foreground="{Binding OutgoingTextBrush}" Text="{Binding OutgoingRate, StringFormat={}{0:N2}/min}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+
+											<ItemsControl Grid.Row="1" Grid.Column="0" ItemsSource="{Binding IncomingItems}" >
+												<ItemsControl.ItemTemplate>
+													<DataTemplate>
+														<Image Source="{Binding Icon}" />
+													</DataTemplate>
+												</ItemsControl.ItemTemplate>
+											</ItemsControl>
+
+											<ItemsControl Grid.Row="1" Grid.Column="2" ItemsSource="{Binding OutgoingItems}" >
+												<ItemsControl.ItemTemplate>
+													<DataTemplate>
+														<Image Source="{Binding Icon}" />
+													</DataTemplate>
+												</ItemsControl.ItemTemplate>
+											</ItemsControl>
+
+											<ItemsControl Grid.Row="1" Grid.Column="1" ItemsSource="{Binding IncomingItems}" >
+												<ItemsControl.ItemTemplate>
+													<DataTemplate>
+														<TextBlock Text="{Binding Rate, StringFormat={}{0:N2}/min}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+													</DataTemplate>
+												</ItemsControl.ItemTemplate>
+											</ItemsControl>
+
+											<ItemsControl Grid.Row="1" Grid.Column="3" ItemsSource="{Binding OutgoingItems}" >
+												<ItemsControl.ItemTemplate>
+													<DataTemplate>
+														<TextBlock Text="{Binding Rate, StringFormat={}{0:N2}/min}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+													</DataTemplate>
+												</ItemsControl.ItemTemplate>
+											</ItemsControl>
+
+										</Grid>
+									</DataTemplate>
+								</ItemsControl.ItemTemplate>
+							</ItemsControl>
+						</StackPanel>
+					</Border>
+				</ControlTemplate>
+			</Setter.Value>
+		</Setter>
+	</ControlTheme>
+</ResourceDictionary>

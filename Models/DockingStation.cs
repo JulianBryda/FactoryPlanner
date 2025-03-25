@@ -36,23 +36,21 @@ namespace FactoryPlanner.Models
         public required List<Item> NeededItems { get; set; }
 
         // colors
+        // don't specify SolidColorBrush in a variable or else you will need to run the constructor in the UI Thread
         public SolidColorBrush IncomingTextBrush
         {
             get
             {
-                return (IncomingRate >= NeededRate) ? SufficientBrush : InsufficientBrush;
+                return (IncomingRate >= NeededRate) ? new(Color.FromUInt32(0xFF4A90E2)) : new(Color.FromUInt32(0xFFE67E22));
             }
         }
         public SolidColorBrush OutgoingTextBrush
         {
             get
             {
-                return (OutgoingRate >= NeededRate) ? SufficientBrush : InsufficientBrush;
+                return (OutgoingRate >= NeededRate) ? new(Color.FromUInt32(0xFF4A90E2)) : new(Color.FromUInt32(0xFFE67E22));
             }
         }
-
-        private readonly SolidColorBrush SufficientBrush = new(Color.FromUInt32(0xFF4A90E2));
-        private readonly SolidColorBrush InsufficientBrush = new(Color.FromUInt32(0xFFE67E22));
 
         public class Item
         {

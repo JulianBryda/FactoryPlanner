@@ -1,18 +1,17 @@
-﻿using Avalonia;
-using Avalonia.Controls;
-using DynamicData;
+﻿using DynamicData;
 using FactoryPlanner.Assets;
 using FactoryPlanner.FileReader;
 using FactoryPlanner.FileReader.Structure;
 using FactoryPlanner.FileReader.Structure.Properties;
 using FactoryPlanner.Models;
+using log4net;
 using ReactiveUI;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
-using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 
 namespace FactoryPlanner.ViewModels
 {
@@ -21,13 +20,27 @@ namespace FactoryPlanner.ViewModels
         public List<TrainStation> TrainStations { get; set; } = [];
 
         private readonly SaveFileReader _saveFileReader;
-
+        private readonly ILog _log = LogManager.GetLogger(typeof(TrainStationViewModel));
 
         public TrainStationViewModel(IScreen screen) : base(screen)
         {
             _saveFileReader = SaveFileReader.LoadedSaveFile;
 
-            LoadTrainStations(0, 5);
+            foreach (var stationIdentifier in GetTrainStationIdentifiers())
+            {
+                string name = GetTrainStationName(stationIdentifier);
+
+                TrainStations.Add(new TrainStation()
+                {
+                    Name = name,
+                    DockingStations = []
+                });
+            }
+
+            //Task.Run(() =>
+            //{
+            //    LoadTrainStations(0, 20);
+            //});
         }
 
         void LoadTrainStations(int startIndex, int count)
@@ -39,14 +52,22 @@ namespace FactoryPlanner.ViewModels
                 ActorObject stationIdentifier = stationIdentifiers[i];
                 ActorObject station = GetStationFromIdentifier(stationIdentifier);
 
+                string name = GetTrainStationName(stationIdentifier);
+                List<DockingStation> dockingStations = LoadConnectedDockingStations(station);
+
                 TrainStations.Add(new TrainStation()
                 {
-                    Name = GetTrainStationName(stationIdentifier),
-                    DockingStations = LoadConnectedDockingStations(station)
+                    Name = name,
+                    DockingStations = dockingStations
                 });
+
+                _log.Info($"Loaded Train Station \"{name}\" with 2T/{dockingStations.Count}W!");
             }
+
+            _log.Info("Finished loading Train Stations!");
         }
 
+        private readonly List<string> _loadedDockingStations = [];
         List<DockingStation> LoadConnectedDockingStations(ActorObject station)
         {
             List<DockingStation> dockingStations = [];
@@ -56,6 +77,10 @@ namespace FactoryPlanner.ViewModels
             {
                 componentIndex = 4;
             }
+
+            if (_loadedDockingStations.Contains(station.Components[componentIndex].PathName)) return dockingStations;
+
+            _loadedDockingStations.Add(station.Components[componentIndex].PathName);
 
             ComponentObject? compObject = (ComponentObject?)_saveFileReader.GetActCompObject(station.Components[componentIndex].PathName);
             if (compObject == null) return dockingStations;
@@ -128,9 +153,17 @@ namespace FactoryPlanner.ViewModels
                     }
                     else
                     {
+                        string itemName = GetItemName(itemPathName);
+                        string iconPath = $".\\Assets\\Icons\\Items\\{itemName}.png";
+                        if (!Path.Exists(iconPath))
+                        {
+                            iconPath = ".\\Assets\\Missing.png";
+                            _log.Warn($"Icon for item \"{itemName}\" is missing!");
+                        }
+
                         items.Add(new DockingStation.Item()
                         {
-                            Icon = new($".\\Assets\\Icons\\Items\\{GetItemName(itemPathName)}.png"),
+                            Icon = new(iconPath),
                             ItemPathName = itemPathName,
                             Rate = prodRate,
                         });
@@ -301,7 +334,7 @@ namespace FactoryPlanner.ViewModels
 
             return null;
         }
-        
+
         private static string GetItemName(string itemPath)
         {
             string trimed = itemPath[(itemPath.LastIndexOf('.') + 1)..].Replace("Recipe_", "").Replace("Alternate_", "");

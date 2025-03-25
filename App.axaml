@@ -32,6 +32,7 @@
 			<ResourceDictionary.MergedDictionaries>
 				<ResourceInclude Source="/Controls/IconText.axaml" />
 				<ResourceInclude Source="/Controls/NavigationBar.axaml" />
+				<ResourceInclude Source="/Controls/TrainStationCard.axaml" />
 			</ResourceDictionary.MergedDictionaries>
 		</ResourceDictionary>
 	</Application.Resources>
