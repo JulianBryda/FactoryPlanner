@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Data.Core.Plugins;
+using Avalonia.Diagnostics;
 using Avalonia.Markup.Xaml;
 using Avalonia.Metadata;
 using FactoryPlanner.ViewModels;
@@ -29,6 +30,7 @@ namespace FactoryPlanner
                 {
                     DataContext = new MainWindowViewModel(),
                 };
+                
             }
 
             base.OnFrameworkInitializationCompleted();

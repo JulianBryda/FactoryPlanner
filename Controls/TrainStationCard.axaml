@@ -1,6 +1,7 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:controls="using:FactoryPlanner.Controls">
+        xmlns:controls="using:FactoryPlanner.Controls"
+		xmlns:models="using:FactoryPlanner.Models">
 
 	<!--
     Additional resources 
@@ -20,7 +21,7 @@
 							<Border Margin="0 8 0 8" Background="Gray" VerticalAlignment="Bottom" Height="1" />
 
 							<Grid ColumnDefinitions="Auto, *, Auto, Auto, *">
-								<TextBlock FontWeight="Bold" Text="2" VerticalAlignment="Center" />
+								<TextBlock FontWeight="Bold" Text="{Binding TrainStation.TrainStationCount, RelativeSource={RelativeSource TemplatedParent}}" VerticalAlignment="Center" />
 								<Image Grid.Column="1" Width="32" Source="/Assets/Icons/Electric_Locomotive.png"/>
 								<Border Grid.Column="2" Width="1" Background="Gray" HorizontalAlignment="Right" />
 								<TextBlock Text="{Binding TrainStation.DockingStations.Count, RelativeSource={RelativeSource TemplatedParent}}" Grid.Column="3" FontWeight="Bold" Margin="8 0 0 0" VerticalAlignment="Center" />
@@ -32,7 +33,7 @@
 
 							<ItemsControl ItemsSource="{Binding TrainStation.DockingStations, RelativeSource={RelativeSource TemplatedParent}}">
 								<ItemsControl.ItemTemplate>
-									<DataTemplate>
+									<DataTemplate x:DataType="models:DockingStation">
 										<Grid ColumnDefinitions="0.4*, *, 0.4*, *" RowDefinitions="*, Auto" >
 											<Image Margin="3" Grid.Column="0" Source="/Assets/Icons/Arrow_Down.png" />
 											<Image Margin="3" Grid.Column="2" Source="/Assets/Icons/Arrow_Up.png" />
@@ -40,34 +41,24 @@
 											<TextBlock Grid.Column="1" Foreground="{Binding IncomingTextBrush}" Text="{Binding IncomingRate, StringFormat={}{0:N2}/min}" HorizontalAlignment="Center" VerticalAlignment="Center" />
 											<TextBlock Grid.Column="3" Foreground="{Binding OutgoingTextBrush}" Text="{Binding OutgoingRate, StringFormat={}{0:N2}/min}" HorizontalAlignment="Center" VerticalAlignment="Center" />
 
-											<ItemsControl Grid.Row="1" Grid.Column="0" ItemsSource="{Binding IncomingItems}" >
+											<ItemsControl Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" ItemsSource="{Binding IncomingItems}" >
 												<ItemsControl.ItemTemplate>
 													<DataTemplate>
-														<Image Source="{Binding Icon}" />
+														<Grid ColumnDefinitions="0.4*, *">
+															<Image Margin="8" Source="{Binding Icon}" />
+															<TextBlock Grid.Column="1" Text="{Binding Rate, StringFormat={}{0:N2}/min}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+														</Grid>
 													</DataTemplate>
 												</ItemsControl.ItemTemplate>
 											</ItemsControl>
 
-											<ItemsControl Grid.Row="1" Grid.Column="2" ItemsSource="{Binding OutgoingItems}" >
+											<ItemsControl Grid.Row="1" Grid.Column="2" Grid.ColumnSpan="2" ItemsSource="{Binding OutgoingItems}" >
 												<ItemsControl.ItemTemplate>
 													<DataTemplate>
-														<Image Source="{Binding Icon}" />
-													</DataTemplate>
-												</ItemsControl.ItemTemplate>
-											</ItemsControl>
-
-											<ItemsControl Grid.Row="1" Grid.Column="1" ItemsSource="{Binding IncomingItems}" >
-												<ItemsControl.ItemTemplate>
-													<DataTemplate>
-														<TextBlock Text="{Binding Rate, StringFormat={}{0:N2}/min}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-													</DataTemplate>
-												</ItemsControl.ItemTemplate>
-											</ItemsControl>
-
-											<ItemsControl Grid.Row="1" Grid.Column="3" ItemsSource="{Binding OutgoingItems}" >
-												<ItemsControl.ItemTemplate>
-													<DataTemplate>
-														<TextBlock Text="{Binding Rate, StringFormat={}{0:N2}/min}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+														<Grid ColumnDefinitions="0.4*, *">
+															<Image Margin="8" Source="{Binding Icon}" />
+															<TextBlock Grid.Column="1" Text="{Binding Rate, StringFormat={}{0:N2}/min}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+														</Grid>
 													</DataTemplate>
 												</ItemsControl.ItemTemplate>
 											</ItemsControl>
