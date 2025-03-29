@@ -39,6 +39,9 @@ namespace FactoryPlanner.ViewModels
                 case "TrainStation":
                     Router.Navigate.Execute(new TrainStationViewModel(this));
                     break;
+                case "Train":
+                    Router.Navigate.Execute(new TrainViewModel(this));
+                    break;
                 default:
                     throw new KeyNotFoundException($"No view found with name \"{viewName}\"!");
             }

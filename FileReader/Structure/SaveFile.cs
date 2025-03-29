@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace FactoryPlanner.FileReader.Structure
 {
-    abstract class SaveFile
+    public abstract class SaveFile
     {
         public SaveFile(ref BinaryReader reader)
         {
@@ -37,7 +37,7 @@ namespace FactoryPlanner.FileReader.Structure
                 bytes = reader.ReadBytes(length);
                 content = Encoding.UTF8.GetString(bytes);
             }
-
+                 
             return content[..^1];
         }
     }

@@ -33,6 +33,7 @@ namespace FactoryPlanner.Models
         public required List<Item> OutgoingItems { get; set; }
         public required List<Item> NeededItems { get; set; }
 
+
         // colors
         // don't specify SolidColorBrush in a variable or else you will need to run the constructor in the UI Thread
         public SolidColorBrush IncomingTextBrush
@@ -50,9 +51,11 @@ namespace FactoryPlanner.Models
             }
         }
 
+
+
         public class Item
         {
-            public required Bitmap Icon { get; set; }
+            public Bitmap? Icon { get; set; }
             public required string ItemPathName { get; set; }
             public required float Rate { get; set; }
         }

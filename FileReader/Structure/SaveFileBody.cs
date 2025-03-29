@@ -16,7 +16,7 @@ using Tmds.DBus.Protocol;
 
 namespace FactoryPlanner.FileReader.Structure
 {
-    internal class SaveFileBody : SaveFile
+    public class SaveFileBody : SaveFile
     {
         public SaveFileBody(ref BinaryReader reader) : base(ref reader)
         {
@@ -53,7 +53,7 @@ namespace FactoryPlanner.FileReader.Structure
         public Level[] Levels { get; set; }
     }
 
-    internal class GroupingGrid : SaveFile
+    public class GroupingGrid : SaveFile
     {
         public GroupingGrid(ref BinaryReader reader) : base(ref reader)
         {
@@ -73,7 +73,7 @@ namespace FactoryPlanner.FileReader.Structure
         public uint LevelCount { get; set; }
     }
 
-    internal class Level : SaveFile
+    public class Level : SaveFile
     {
         public Level(ref BinaryReader reader, bool isPersistentLevel) : base(ref reader)
         {
@@ -143,7 +143,7 @@ namespace FactoryPlanner.FileReader.Structure
         public ObjectReference[] SecondCollectables { get; set; }
     }
 
-    internal class ObjectHeader : SaveFile
+    public class ObjectHeader : SaveFile
     {
         public ObjectHeader(ref BinaryReader reader) : base(ref reader)
         {
@@ -172,14 +172,14 @@ namespace FactoryPlanner.FileReader.Structure
         public ActCompHeader ActCompHeader { get; set; }
     }
 
-    internal class ActCompHeader(ref BinaryReader reader) : SaveFile(ref reader)
+    public class ActCompHeader(ref BinaryReader reader) : SaveFile(ref reader)
     {
         public string TypePath { get; set; } = ReadString(ref reader);
         public string RootObject { get; set; } = ReadString(ref reader);
         public string InstanceName { get; set; } = ReadString(ref reader);
     }
 
-    internal class ActorHeader : ActCompHeader
+    public class ActorHeader : ActCompHeader
     {
         public ActorHeader(ref BinaryReader reader) : base(ref reader)
         {
@@ -211,7 +211,7 @@ namespace FactoryPlanner.FileReader.Structure
         public uint WasPlacedInLevel { get; set; }
     }
 
-    internal class ComponentHeader : ActCompHeader
+    public class ComponentHeader : ActCompHeader
     {
         public ComponentHeader(ref BinaryReader reader) : base(ref reader)
         {
@@ -221,7 +221,7 @@ namespace FactoryPlanner.FileReader.Structure
         public string ParentActorName { get; set; }
     }
 
-    internal class ActCompObject : SaveFile
+    public class ActCompObject : SaveFile
     {
         public ActCompObject(ref BinaryReader reader) : base(ref reader)
         {
@@ -236,7 +236,7 @@ namespace FactoryPlanner.FileReader.Structure
         public PropertyListEntry[] Properties { get; set; } = [];
     }
 
-    internal class ActorObject : ActCompObject
+    public class ActorObject : ActCompObject
     {
         public ActorObject(ref BinaryReader reader) : base(ref reader)
         {
@@ -269,7 +269,7 @@ namespace FactoryPlanner.FileReader.Structure
         public byte[] TrailingBytes { get; set; } = [];
     }
 
-    internal class ComponentObject : ActCompObject
+    public class ComponentObject : ActCompObject
     {
         public ComponentObject(ref BinaryReader reader) : base(ref reader)
         {
@@ -289,7 +289,7 @@ namespace FactoryPlanner.FileReader.Structure
         public byte[] TrailingBytes { get; set; } = [];
     }
 
-    internal class ObjectReference(ref BinaryReader reader) : SaveFile(ref reader)
+    public class ObjectReference(ref BinaryReader reader) : SaveFile(ref reader)
     {
         public string LevelName { get; set; } = ReadString(ref reader);
         public string PathName { get; set; } = ReadString(ref reader);

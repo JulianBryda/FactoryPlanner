@@ -5,12 +5,10 @@ using System.Linq;
 using System.Reflection.PortableExecutable;
 using System.Text;
 using System.Threading.Tasks;
-using Tmds.DBus.Protocol;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace FactoryPlanner.FileReader.Structure.Properties
 {
-    internal class Property(ref BinaryReader reader) : SaveFile(ref reader)
+    public class Property(ref BinaryReader reader) : SaveFile(ref reader)
     {
 
         protected static Property CreateByType(string type, ref BinaryReader reader)

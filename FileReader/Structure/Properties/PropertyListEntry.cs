@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace FactoryPlanner.FileReader.Structure.Properties
 {
-    internal class PropertyListEntry : Property
+    public class PropertyListEntry : Property
     {
         public PropertyListEntry(ref BinaryReader reader) : base(ref reader)
         {

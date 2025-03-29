@@ -3,15 +3,17 @@ using FactoryPlanner.Assets;
 using FactoryPlanner.FileReader;
 using FactoryPlanner.FileReader.Structure;
 using FactoryPlanner.FileReader.Structure.Properties;
+using FactoryPlanner.Helper;
 using FactoryPlanner.Models;
 using log4net;
 using ReactiveUI;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
+using System.ComponentModel.Design;
 using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
+using System.Runtime.CompilerServices;
+using static FactoryPlanner.Models.DockingStation;
 
 namespace FactoryPlanner.ViewModels
 {
@@ -26,7 +28,7 @@ namespace FactoryPlanner.ViewModels
         {
             _saveFileReader = SaveFileReader.LoadedSaveFile;
 
-            LoadTrainStations(0, 20);
+            LoadTrainStations(0, 5);
             //LoadSimpleTrainStations();
         }
 
@@ -34,7 +36,7 @@ namespace FactoryPlanner.ViewModels
         {
             foreach (var stationIdentifier in GetTrainStationIdentifiers())
             {
-                string name = GetTrainStationName(stationIdentifier);
+                string name = GetTrainStationName(stationIdentifier.Value);
 
                 TrainStations.Add(new TrainStation()
                 {
@@ -51,11 +53,19 @@ namespace FactoryPlanner.ViewModels
 
             for (int i = startIndex; i < startIndex + count && i < stationIdentifiers.Count; i++)
             {
-                ActorObject stationIdentifier = stationIdentifiers[i];
+                ActorObject stationIdentifier = stationIdentifiers.ElementAt(i).Value;
                 ActorObject station = GetStationFromIdentifier(stationIdentifier);
 
                 string name = GetTrainStationName(stationIdentifier);
                 TrainStation trainStation = LoadTrainStation(station, name);
+                var trains = TrainHelper.GetTrainsByStop(stationIdentifiers.ElementAt(i).Key);
+                var items = CalculateTotalItems(trains, stationIdentifiers.ElementAt(i).Key);
+
+                foreach (var docking in trainStation.DockingStations) 
+                {
+                    docking.IncomingItems = items;
+                    // TODO assign items to freight container, find way to filter double sided trains
+                }
 
                 TrainStations.Add(trainStation);
 
@@ -65,39 +75,10 @@ namespace FactoryPlanner.ViewModels
             _log.Info("Finished loading Train Stations!");
         }
 
-        /// <summary>
-        /// get's the connected station
-        /// </summary>
-        /// <param name="station">ActorOnject of station</param>
-        /// <param name="connection">Front or Back</param>
-        /// <returns></returns>
-        ActorObject? LoadConnectedStation(ActorObject station, StationConnection connection, out string? pathName)
-        {
-            if (GetPropertyByName(station, "mIsOrientationReversed") != null)
-            {
-                connection = (connection == StationConnection.Front) ? StationConnection.Back : StationConnection.Front;
-            }
-            int componentIndex = 2 + (int)connection;
-            pathName = null;
-
-            ComponentObject? compObject = (ComponentObject?)_saveFileReader.GetActCompObject(station.Components[componentIndex].PathName);
-            if (compObject == null) return null;
-
-            PropertyListEntry? connectedToEntry = compObject.Properties.FirstOrDefault(o => o.Name == "mConnectedTo");
-            if (connectedToEntry == null) return null;
-
-            ObjectProperty? connectedTo = (ObjectProperty?)connectedToEntry.Property;
-            if (connectedTo == null) return null;
-
-            string stationPathName = connectedTo.Reference.PathName[..connectedTo.Reference.PathName.LastIndexOf('.')];
-            pathName = stationPathName;
-            return (ActorObject?)_saveFileReader.GetActCompObject(stationPathName);
-        }
-
         TrainStation LoadTrainStation(ActorObject station, string name)
         {
             // get first TrainStation of whole Train-/DockingStation complex
-            if (LoadConnectedStation(station, StationConnection.Front, out string? pathName) is ActorObject tempStation && pathName != null && IsTrainStation(pathName))
+            if (LoadConnectedStation(station, StationConnection.Front, out string? pathName) is ActorObject tempStation && pathName != null && TrainHelper.IsTrainStation(pathName))
             {
                 return LoadTrainStation(tempStation, name);
             }
@@ -111,7 +92,7 @@ namespace FactoryPlanner.ViewModels
 
             while (LoadConnectedStation(station, StationConnection.Back, out pathName) is ActorObject connectedStation && pathName != null)
             {
-                if (IsDockingStation(pathName))
+                if (TrainHelper.IsDockingStation(pathName))
                 {
                     if (LoadDockingStation(connectedStation, pathName) is DockingStation value)
                     {
@@ -130,6 +111,54 @@ namespace FactoryPlanner.ViewModels
         }
 
         /// <summary>
+        /// get's the connected station
+        /// </summary>
+        /// <param name="station">ActorOnject of station</param>
+        /// <param name="connection">Front or Back</param>
+        /// <returns></returns>
+        bool flipped = false;
+        ActorObject? LoadConnectedStation(ActorObject station, StationConnection connection, out string? pathName)
+        {
+            if (flipped == true && TrainHelper.IsTrainStation(station.Components.First().PathName))
+            {
+                flipped = false;
+            }
+
+            if (SaveFileReader.GetPropertyByName(station, "mIsOrientationReversed") != null && !flipped)
+            {
+                connection = (connection == StationConnection.Front) ? StationConnection.Back : StationConnection.Front;
+            }
+            int componentIndex = 2 + (int)connection;
+            pathName = null;
+
+            ComponentObject? test = (ComponentObject?)_saveFileReader.GetActCompObject(station.Components[componentIndex - 1].PathName);
+
+            ComponentObject? compObject = (ComponentObject?)_saveFileReader.GetActCompObject(station.Components[componentIndex].PathName);
+            if (compObject != null && SaveFileReader.GetPropertyByName(compObject, "platformOwner") != null)
+            {
+                // connected station is empty platform, take other connection because empty platform are stupid
+                // also invert mIsOrientationReversed cause empty platform changes the orientation for connected stations (stupid again)
+                flipped = SaveFileReader.GetPropertyByName(compObject, "mComponentDirection") != null;
+                componentIndex = (componentIndex == 3) ? 4 : 3;
+                compObject = (ComponentObject?)_saveFileReader.GetActCompObject(station.Components[componentIndex].PathName);
+
+                _log.Info("Used other connection and flipped!");
+            }
+            if (compObject == null) return null;
+
+            PropertyListEntry? connectedToEntry = compObject.Properties.FirstOrDefault(o => o.Name == "mConnectedTo");
+            if (connectedToEntry == null) return null;
+
+            ObjectProperty? connectedTo = (ObjectProperty?)connectedToEntry.Property;
+            if (connectedTo == null) return null;
+
+            string stationPathName = connectedTo.Reference.PathName[..connectedTo.Reference.PathName.LastIndexOf('.')];
+            pathName = stationPathName;
+
+            return (ActorObject?)_saveFileReader.GetActCompObject(stationPathName);
+        }
+
+        /// <summary>
         /// 
         /// </summary>
         /// <param name="station">ActorObject of a docking station</param>
@@ -138,11 +167,12 @@ namespace FactoryPlanner.ViewModels
         /// <exception cref="ArgumentException"></exception>
         DockingStation? LoadDockingStation(ActorObject dockingStation, string pathName)
         {
-            PropertyListEntry? propertyEntry = GetPropertyByName(dockingStation, "mInventory");
+            PropertyListEntry? propertyEntry = SaveFileReader.GetPropertyByName(dockingStation, "mInventory");
             if (propertyEntry == null) return null; // ActorObjet is not a docking station
 
             var neededItems = GetDockingStationItemsByPort(dockingStation, pathName, PortType.Output);
             var outgoingItems = GetDockingStationItemsByPort(dockingStation, pathName, PortType.Input);
+            //var incomingItems = GetIncomingToDockingStation(dockingStation, pathName);
 
             return new DockingStation()
             {
@@ -152,26 +182,26 @@ namespace FactoryPlanner.ViewModels
             };
         }
 
-        List<DockingStation.Item> GetDockingStationItemsByPort(ActorObject dockingStation, string pathName, PortType portType)
+        List<Item> GetDockingStationItemsByPort(ActorObject dockingStation, string pathName, PortType portType)
         {
             List<ActorObject> buildings = GetConnectedBuildings(dockingStation, pathName, portType);
 
-            List<DockingStation.Item> items = [];
+            List<Item> items = [];
             foreach (ActorObject building in buildings)
             {
-                if (GetPropertyByName(building, "mCurrentRecipe")?.Property is ObjectProperty itemProperty)
+                if (SaveFileReader.GetPropertyByName(building, "mCurrentRecipe")?.Property is ObjectProperty itemProperty)
                 {
                     string itemPathName = itemProperty.Reference.PathName;
 
                     Recipe? recipe = AssetManager.GetRecipe(itemPathName);
                     if (recipe == null) continue;
 
-                    FloatProperty? currentPotential = (FloatProperty?)GetPropertyByName(building, "mCurrentPotential")?.Property;
+                    FloatProperty? currentPotential = (FloatProperty?)SaveFileReader.GetPropertyByName(building, "mCurrentPotential")?.Property;
 
                     float prodRate = 60f / recipe.Time * recipe.Products.First().Amount;
                     if (currentPotential != null) prodRate *= currentPotential.Value;
 
-                    if (items.Find(o => o.ItemPathName == itemPathName) is DockingStation.Item item)
+                    if (items.Find(o => o.ItemPathName == itemPathName) is Item item)
                     {
                         item.Rate += prodRate;
                     }
@@ -185,12 +215,77 @@ namespace FactoryPlanner.ViewModels
                             _log.Warn($"Icon for item \"{itemName}\" is missing!");
                         }
 
-                        items.Add(new DockingStation.Item()
+                        items.Add(new Item()
                         {
                             Icon = new(iconPath),
                             ItemPathName = itemPathName,
                             Rate = prodRate,
                         });
+                    }
+                }
+            }
+
+            return items;
+        }
+
+        List<Item> CalculateTotalItems(List<Train> trains, string stationIdentifierPathName)
+        {
+            List<Item> items = [];
+
+            foreach (Train train in trains)
+            {
+                if (IsUnsupportedTrain(train)) continue;
+
+                items.AddRange(CalculateItemsByTrain(train, stationIdentifierPathName));
+            }
+
+            return items;
+        }
+
+        List<Item> CalculateItemsByTrain(Train train, string stationIdentifierPathName)
+        {
+            List<Item> items = [];
+            if (train.TimeTable == null) return items;
+
+            foreach (TimeTableStop stop in train.TimeTable.Stops)
+            {
+                if (stop.StationIdentifierPathName == stationIdentifierPathName) continue;
+                ActorObject? stationIdentifier = (ActorObject?)_saveFileReader.GetActCompObject(stop.StationIdentifierPathName);
+                if (stationIdentifier == null) continue;
+
+                ActorObject actorStation = GetStationFromIdentifier(stationIdentifier);
+                TrainStation station = LoadTrainStation(actorStation, "");
+
+                for (int i = 0; i < station.DockingStations.Count && i < train.FreightWagons.Count; i++)
+                {
+                    var dockingStation = station.DockingStations[i];
+
+                    foreach (var item in dockingStation.NeededItems)
+                    {
+                        if (stop.UnloadFilter.Count > 0 && !stop.UnloadFilter.Contains(item.ItemPathName)) continue;
+
+                        if (items.Find(o => o.ItemPathName == item.ItemPathName) is Item foundItem)
+                        {
+                            foundItem.Rate -= item.Rate;
+                        }
+                        else
+                        {
+                            items.Add(item);
+                        }
+                    }
+
+                    foreach (var item in dockingStation.OutgoingItems)
+                    {
+                        if (stop.LoadFilter.Count > 0 && !stop.LoadFilter.Contains(item.ItemPathName)) continue;
+
+                        if (items.Find(o => o.ItemPathName == item.ItemPathName) is Item foundItem)
+                        {
+                            foundItem.Rate += item.Rate;
+                        }
+                        else
+                        {
+                            items.Add(item);
+                        }
                     }
                 }
             }
@@ -209,7 +304,7 @@ namespace FactoryPlanner.ViewModels
 
             foreach (var port in ports)
             {
-                PropertyListEntry? conComponent = GetPropertyByName(port, "mConnectedComponent");
+                PropertyListEntry? conComponent = SaveFileReader.GetPropertyByName(port, "mConnectedComponent");
                 if (conComponent == null) continue;
 
                 ObjectProperty? objProperty = (ObjectProperty?)conComponent.Property;
@@ -315,17 +410,17 @@ namespace FactoryPlanner.ViewModels
             return objects;
         }
 
-        private List<ActorObject> GetTrainStationIdentifiers()
+        private Dictionary<string, ActorObject> GetTrainStationIdentifiers()
         {
-            ActorObject railRoadSubSystem = (ActorObject?)_saveFileReader.GetActCompObject("Persistent_Level:PersistentLevel.RailroadSubsystem") ?? throw new NullReferenceException("Failed to load railSubSystem!");
+            ActorObject railRoadSubSystem = TrainHelper.GetRailroadSubsystem();
             PropertyListEntry identifierEntry = railRoadSubSystem.Properties.FirstOrDefault() ?? throw new NullReferenceException("Failed to load TrainStationIdentifiers!");
             ArrayProperty identifiersProperty = (ArrayProperty?)identifierEntry.Property ?? throw new NullReferenceException("Failed to load IdentifierProperty!");
 
-            List<ActorObject> identifiers = [];
+            Dictionary<string, ActorObject> identifiers = [];
             foreach (SimpleObjectProperty property in identifiersProperty.Properties.Cast<SimpleObjectProperty>())
             {
                 ActorObject identifier = (ActorObject?)_saveFileReader.GetActCompObject(property.Value.PathName) ?? throw new NullReferenceException("This should not fail!");
-                identifiers.Add(identifier);
+                identifiers.Add(property.Value.PathName, identifier);
             }
 
             return identifiers;
@@ -348,33 +443,36 @@ namespace FactoryPlanner.ViewModels
             return textProperty.Value;
         }
 
-        private static PropertyListEntry? GetPropertyByName(ActCompObject obj, string name)
-        {
-            foreach (var entry in obj.Properties)
-            {
-                if (entry.Name == name)
-                    return entry;
-            }
-
-            return null;
-        }
-
         private static string GetItemName(string itemPath)
         {
             string trimed = itemPath[(itemPath.LastIndexOf('.') + 1)..].Replace("Recipe_", "").Replace("Alternate_", "");
+
             return trimed[..trimed.IndexOf('_')];
         }
 
-        private static bool IsTrainStation(string pathName)
-        {
-            string trainStation = "Persistent_Level:PersistentLevel.Build_TrainStation";
-            return pathName[..trainStation.Length] == trainStation;
-        }
+        //private static bool IsUnsupportedTrain(Train train)
+        //{
+        //    if (train.Locomotives.Count == 0) return false;
 
-        private static bool IsDockingStation(string pathName)
+        //    bool isReversed = SaveFileReader.GetPropertyByName(train.Locomotives.First(), "mIsOrientationReversed") != null;
+
+        //    for (int i = 1; i < train.Locomotives.Count; i++)
+        //    {
+        //        bool reversed = SaveFileReader.GetPropertyByName(train.Locomotives[i], "mIsOrientationReversed") != null;
+        //        if (isReversed != reversed)
+        //        {
+        //            return true;
+        //        }
+        //    }
+
+        //    return false;
+        //}
+
+        private static bool IsUnsupportedTrain(Train train)
         {
-            string dockingStation = "Persistent_Level:PersistentLevel.Build_TrainDockingStation";
-            return pathName[..dockingStation.Length] == dockingStation;
+            string[] split = train.Layout.Split(';');
+
+            return split.First().Contains('L') && split.Last().Contains('L');
         }
 
         private enum PortType

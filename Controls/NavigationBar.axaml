@@ -32,6 +32,7 @@
 
 			  <Menu Grid.Column="1" Padding="15">
 				  <MenuItem Command="{TemplateBinding Command}" CommandParameter="TrainStation" FontWeight="Bold" Header="Train Stations" />
+				  <MenuItem Command="{TemplateBinding Command}" CommandParameter="Train" FontWeight="Bold" Header="Trains" />
 			  </Menu>
 
 		  </Grid>
