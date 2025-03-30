@@ -50,7 +50,7 @@ namespace FactoryPlanner.Helper
             string layout = "";
             TimeTable? timeTable = null;
             List<ActorObject> locomotives = [];
-            List<ActorObject> freightWagons = [];
+            List<FreightWagon> freightWagons = [];
             for (int i = trainIndex - searchRange; i < trainIndex + searchRange; i++)
             {
                 if (i < min || i > max) continue;
@@ -72,7 +72,11 @@ namespace FactoryPlanner.Helper
                 }
                 else if (IsFreightWagon(header.ActCompHeader.InstanceName))
                 {
-                    freightWagons.Add(trainPart);
+                    freightWagons.Add(new FreightWagon()
+                    {
+                        Wagon = trainPart,
+                        Items = []
+                    });
                     layout += $"F{freightWagons.Count - 1};";
                 }
             }

@@ -12,7 +12,7 @@ namespace FactoryPlanner.Models
         public required string Name { get; set; }
         public required string Layout { get; set; }
         public required List<ActorObject> Locomotives { get; set; }
-        public required List<ActorObject> FreightWagons { get; set; }
+        public required List<FreightWagon> FreightWagons { get; set; }
         public TimeTable? TimeTable { get; set; }
     }
 }

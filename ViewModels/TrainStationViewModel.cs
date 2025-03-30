@@ -59,13 +59,7 @@ namespace FactoryPlanner.ViewModels
                 string name = GetTrainStationName(stationIdentifier);
                 TrainStation trainStation = LoadTrainStation(station, name);
                 var trains = TrainHelper.GetTrainsByStop(stationIdentifiers.ElementAt(i).Key);
-                var items = CalculateTotalItems(trains, stationIdentifiers.ElementAt(i).Key);
-
-                foreach (var docking in trainStation.DockingStations) 
-                {
-                    docking.IncomingItems = items;
-                    // TODO assign items to freight container, find way to filter double sided trains
-                }
+                CalculateTotalItems(trains, stationIdentifiers.ElementAt(i).Key); // sets the items for the provided trains
 
                 TrainStations.Add(trainStation);
 
@@ -228,24 +222,19 @@ namespace FactoryPlanner.ViewModels
             return items;
         }
 
-        List<Item> CalculateTotalItems(List<Train> trains, string stationIdentifierPathName)
+        void CalculateTotalItems(List<Train> trains, string stationIdentifierPathName)
         {
-            List<Item> items = [];
-
             foreach (Train train in trains)
             {
                 if (IsUnsupportedTrain(train)) continue;
 
-                items.AddRange(CalculateItemsByTrain(train, stationIdentifierPathName));
+                CalculateItemsByTrain(train, stationIdentifierPathName);
             }
-
-            return items;
         }
 
-        List<Item> CalculateItemsByTrain(Train train, string stationIdentifierPathName)
+        void CalculateItemsByTrain(Train train, string stationIdentifierPathName)
         {
-            List<Item> items = [];
-            if (train.TimeTable == null) return items;
+            if (train.TimeTable == null) return;
 
             foreach (TimeTableStop stop in train.TimeTable.Stops)
             {
@@ -259,38 +248,39 @@ namespace FactoryPlanner.ViewModels
                 for (int i = 0; i < station.DockingStations.Count && i < train.FreightWagons.Count; i++)
                 {
                     var dockingStation = station.DockingStations[i];
+                    var freightWagon = train.FreightWagons[i];
 
                     foreach (var item in dockingStation.NeededItems)
                     {
                         if (stop.UnloadFilter.Count > 0 && !stop.UnloadFilter.Contains(item.ItemPathName)) continue;
 
-                        if (items.Find(o => o.ItemPathName == item.ItemPathName) is Item foundItem)
-                        {
-                            foundItem.Rate -= item.Rate;
-                        }
+                        // freight wagon
+                        if (freightWagon.Items.Find(o => o.ItemPathName == item.ItemPathName) is Item freightItem)
+                            freightItem.Rate -= item.Rate;
                         else
-                        {
-                            items.Add(item);
-                        }
+                            freightWagon.Items.Add(item);
+
+                        // docking station
+                        if (dockingStation.IncomingItems.Find(o => o.ItemPathName == item.ItemPathName) is Item dockingItem)
+                            dockingItem.Rate += item.Rate;
+                        else
+                            freightWagon.Items.Add(item);
                     }
 
                     foreach (var item in dockingStation.OutgoingItems)
                     {
                         if (stop.LoadFilter.Count > 0 && !stop.LoadFilter.Contains(item.ItemPathName)) continue;
 
-                        if (items.Find(o => o.ItemPathName == item.ItemPathName) is Item foundItem)
-                        {
-                            foundItem.Rate += item.Rate;
-                        }
+                        // freight wagon
+                        if (freightWagon.Items.Find(o => o.ItemPathName == item.ItemPathName) is Item foundItem)     
+                            foundItem.Rate += item.Rate;  
                         else
-                        {
-                            items.Add(item);
-                        }
+                            freightWagon.Items.Add(item);
+
+                        // i could add a neededItems property to DockingStations for exports in the future
                     }
                 }
             }
-
-            return items;
         }
 
         List<ActorObject> GetConnectedBuildings(ActorObject building, string buildingPathName, PortType portType)
@@ -306,7 +296,7 @@ namespace FactoryPlanner.ViewModels
             {
                 PropertyListEntry? conComponent = SaveFileReader.GetPropertyByName(port, "mConnectedComponent");
                 if (conComponent == null) continue;
-
+                //TODO FIX loop issue caused by forwarding portType to recursion
                 ObjectProperty? objProperty = (ObjectProperty?)conComponent.Property;
                 if (objProperty == null) continue;
 
@@ -323,7 +313,7 @@ namespace FactoryPlanner.ViewModels
                 bool isConveyor = connectedBuildingPathName.Contains("Persistent_Level:PersistentLevel.Build_Conveyor"); // also true when ConveyorAttachment
                 if (isConveyorAttachment)
                 {
-                    connectedBuildings.AddRange(GetConnectedBuildings(connectedBuilding, connectedBuildingPathName, PortType.Input));
+                    connectedBuildings.AddRange(GetConnectedBuildings(connectedBuilding, connectedBuildingPathName, portType));
                 }
                 else if (isConveyor)
                 {
