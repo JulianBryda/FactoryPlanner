@@ -1,35 +1,68 @@
-﻿using DynamicData;
+﻿using Avalonia.Input;
+using CommunityToolkit.Mvvm.ComponentModel;
+using DynamicData;
 using FactoryPlanner.Assets;
 using FactoryPlanner.FileReader;
 using FactoryPlanner.FileReader.Structure;
 using FactoryPlanner.FileReader.Structure.Properties;
 using FactoryPlanner.Helper;
 using FactoryPlanner.Models;
+using ICSharpCode.SharpZipLib.Zip;
 using log4net;
 using ReactiveUI;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel.Design;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reactive;
+using System.Reflection.Metadata.Ecma335;
 using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 using static FactoryPlanner.Models.DockingStation;
 
 namespace FactoryPlanner.ViewModels
 {
     public class TrainStationViewModel : ViewModelBase
     {
-        public List<TrainStation> TrainStations { get; set; } = [];
-
         private readonly SaveFileReader _saveFileReader;
         private readonly ILog _log = LogManager.GetLogger(typeof(TrainStationViewModel));
+
+        private bool _searchProgressBarVisible = false;
+
+        public ReactiveCommand<Unit, Unit> SearchCommand { get; }
+        public ObservableCollection<TrainStation> TrainStations { get; set; } = [];
+        public string SearchText { get; set; } = string.Empty;
+
+        public bool SearchProgressBarVisible
+        {
+            get => _searchProgressBarVisible;
+            set => this.RaiseAndSetIfChanged(ref _searchProgressBarVisible, value);
+        }
+
 
         public TrainStationViewModel(IScreen screen) : base(screen)
         {
             _saveFileReader = SaveFileReader.LoadedSaveFile;
 
-            LoadTrainStations(0, 5);
+            SearchCommand = ReactiveCommand.Create(HandleSearchCommand);
+
+            //LoadTrainStations(0, 5);
             //LoadSimpleTrainStations();
+        }
+
+        private void HandleSearchCommand()
+        {
+            Task.Run(() =>
+            {
+                TrainStations.Clear();
+
+                SearchProgressBarVisible = true;
+                LoadTrainStations(SearchText);
+                SearchProgressBarVisible = false;
+            });
         }
 
         void LoadSimpleTrainStations()
@@ -50,29 +83,73 @@ namespace FactoryPlanner.ViewModels
         void LoadTrainStations(int startIndex, int count)
         {
             var stationIdentifiers = GetTrainStationIdentifiers();
+            List<Task> tasks = [];
 
             for (int i = startIndex; i < startIndex + count && i < stationIdentifiers.Count; i++)
             {
-                ActorObject stationIdentifier = stationIdentifiers.ElementAt(i).Value;
-                ActorObject station = GetStationFromIdentifier(stationIdentifier);
+                var identifier = stationIdentifiers.ElementAt(i);
 
-                string name = GetTrainStationName(stationIdentifier);
-                TrainStation trainStation = LoadTrainStation(station, name);
-                var trains = TrainHelper.GetTrainsByStop(stationIdentifiers.ElementAt(i).Key);
-                CalculateTotalItems(trains, stationIdentifiers.ElementAt(i).Key); // sets the items for the provided trains
+                tasks.Add(Task.Run(() =>
+                {
+                    ActorObject stationIdentifier = identifier.Value;
+                    ActorObject station = GetStationFromIdentifier(stationIdentifier);
 
-                TrainStations.Add(trainStation);
+                    string name = GetTrainStationName(stationIdentifier);
+                    _log.Info($"Loading Train Station \"{name}\"...");
+                    TrainStation trainStation = LoadTrainStation(station, name);
+                    var trains = TrainHelper.GetTrainsByStop(identifier.Key);
+                    CalculateTotalItems(trains, trainStation); // sets the items for the provided trains
 
-                _log.Info($"Loaded Train Station \"{name}\" with {trainStation.TrainStationCount}T/{trainStation.DockingStations.Count}W!");
+                    TrainStations.Add(trainStation);
+
+                    _log.Info($"Loaded Train Station \"{name}\" with {trainStation.TrainStationCount}T/{trainStation.DockingStations.Count}W!");
+                }));
             }
+
+            // wait for stations to load
+            tasks.ForEach(o => o.Wait());
 
             _log.Info("Finished loading Train Stations!");
         }
 
+        void LoadTrainStations(string nameFilter)
+        {
+            var stationIdentifiers = GetTrainStationIdentifiers();
+            List<Task> tasks = [];
+
+            foreach (var identifier in stationIdentifiers)
+            {
+                ActorObject stationIdentifier = identifier.Value;
+                ActorObject station = GetStationFromIdentifier(stationIdentifier);
+
+                string name = GetTrainStationName(stationIdentifier);
+                if (!name.Contains(nameFilter, StringComparison.CurrentCultureIgnoreCase)) continue;
+
+                tasks.Add(Task.Run(() =>
+                {
+                    _log.Info($"Loading Train Station \"{name}\"...");
+                    TrainStation trainStation = LoadTrainStation(station, name);
+                    var trains = TrainHelper.GetTrainsByStop(identifier.Key);
+                    CalculateTotalItems(trains, trainStation); // sets the items for the provided trains
+
+                    TrainStations.Add(trainStation);
+
+                    _log.Info($"Loaded Train Station \"{name}\" with {trainStation.TrainStationCount}T/{trainStation.DockingStations.Count}W!");
+                }));
+            }
+
+            // wait for stations to load
+            tasks.ForEach(o => o.Wait());
+
+            _log.Info($"Finished loading Train Stations matching the filter \"{nameFilter}\"!");
+        }
+
         TrainStation LoadTrainStation(ActorObject station, string name)
         {
+            bool flipped = false;
+
             // get first TrainStation of whole Train-/DockingStation complex
-            if (LoadConnectedStation(station, StationConnection.Front, out string? pathName) is ActorObject tempStation && pathName != null && TrainHelper.IsTrainStation(pathName))
+            if (LoadConnectedStation(station, StationConnection.Front, out string? pathName, ref flipped) is ActorObject tempStation && pathName != null && TrainHelper.IsTrainStation(pathName))
             {
                 return LoadTrainStation(tempStation, name);
             }
@@ -84,7 +161,7 @@ namespace FactoryPlanner.ViewModels
                 DockingStations = []
             };
 
-            while (LoadConnectedStation(station, StationConnection.Back, out pathName) is ActorObject connectedStation && pathName != null)
+            while (LoadConnectedStation(station, StationConnection.Back, out pathName, ref flipped) is ActorObject connectedStation && pathName != null)
             {
                 if (TrainHelper.IsDockingStation(pathName))
                 {
@@ -110,8 +187,7 @@ namespace FactoryPlanner.ViewModels
         /// <param name="station">ActorOnject of station</param>
         /// <param name="connection">Front or Back</param>
         /// <returns></returns>
-        bool flipped = false;
-        ActorObject? LoadConnectedStation(ActorObject station, StationConnection connection, out string? pathName)
+        ActorObject? LoadConnectedStation(ActorObject station, StationConnection connection, out string? pathName, ref bool flipped)
         {
             if (flipped == true && TrainHelper.IsTrainStation(station.Components.First().PathName))
             {
@@ -178,7 +254,7 @@ namespace FactoryPlanner.ViewModels
 
         List<Item> GetDockingStationItemsByPort(ActorObject dockingStation, string pathName, PortType portType)
         {
-            List<ActorObject> buildings = GetConnectedBuildings(dockingStation, pathName, portType);
+            List<ActorObject> buildings = GetConnectedBuildings(dockingStation, [pathName], portType);
 
             List<Item> items = [];
             foreach (ActorObject building in buildings)
@@ -192,29 +268,13 @@ namespace FactoryPlanner.ViewModels
 
                     FloatProperty? currentPotential = (FloatProperty?)SaveFileReader.GetPropertyByName(building, "mCurrentPotential")?.Property;
 
-                    float prodRate = 60f / recipe.Time * recipe.Products.First().Amount;
-                    if (currentPotential != null) prodRate *= currentPotential.Value;
-
-                    if (items.Find(o => o.ItemPathName == itemPathName) is Item item)
+                    if (portType == PortType.Input)
                     {
-                        item.Rate += prodRate;
+                        items = GetItemsByProducts(recipe.Products, recipe.Time, currentPotential?.Value ?? 1f);
                     }
                     else
                     {
-                        string itemName = GetItemName(itemPathName);
-                        string iconPath = $".\\Assets\\Icons\\Items\\{itemName}.png";
-                        if (!Path.Exists(iconPath))
-                        {
-                            iconPath = ".\\Assets\\Missing.png";
-                            _log.Warn($"Icon for item \"{itemName}\" is missing!");
-                        }
-
-                        items.Add(new Item()
-                        {
-                            Icon = new(iconPath),
-                            ItemPathName = itemPathName,
-                            Rate = prodRate,
-                        });
+                        items = GetItemsByProducts(recipe.Ingredients, recipe.Time, currentPotential?.Value ?? 1f);
                     }
                 }
             }
@@ -222,28 +282,70 @@ namespace FactoryPlanner.ViewModels
             return items;
         }
 
-        void CalculateTotalItems(List<Train> trains, string stationIdentifierPathName)
+        /// <summary>
+        /// Takes in the Products/Ingredients of a recipe and outputs a list of Items
+        /// </summary>
+        /// <param name="products">products or ingredients of recipe</param>
+        /// <param name="recipeTime">recipe time</param>
+        /// <param name="currentPotential">current potential of building hosting recipe</param>
+        /// <returns>a list of Items based on the products</returns>
+        List<Item> GetItemsByProducts(Product[] products, float recipeTime, float currentPotential)
+        {
+            List<Item> items = [];
+
+            foreach (var product in products)
+            {
+                float prodRate = 60f / recipeTime * product.Amount;
+                prodRate *= currentPotential;
+
+                if (items.Find(o => o.ItemPathName == product.Item) is Item item)
+                {
+                    item.Rate += prodRate;
+                }
+                else
+                {
+                    string itemName = product.Item[5..^2];
+                    string iconPath = $".\\Assets\\Icons\\Items\\{itemName}.png";
+                    if (!Path.Exists(iconPath))
+                    {
+                        iconPath = ".\\Assets\\Missing.png";
+                        _log.Warn($"Icon for item \"{itemName}\" is missing!");
+                    }
+
+                    items.Add(new Item()
+                    {
+                        Icon = new(iconPath),
+                        ItemPathName = product.Item,
+                        Rate = prodRate,
+                    });
+                }
+            }
+
+            return items;
+        }
+
+        void CalculateTotalItems(List<Train> trains, TrainStation trainStation)
         {
             foreach (Train train in trains)
             {
                 if (IsUnsupportedTrain(train)) continue;
 
-                CalculateItemsByTrain(train, stationIdentifierPathName);
+                CalculateItemsByTrain(train, trainStation);
             }
         }
 
-        void CalculateItemsByTrain(Train train, string stationIdentifierPathName)
+        void CalculateItemsByTrain(Train train, TrainStation trainStation)
         {
             if (train.TimeTable == null) return;
 
             foreach (TimeTableStop stop in train.TimeTable.Stops)
             {
-                if (stop.StationIdentifierPathName == stationIdentifierPathName) continue;
                 ActorObject? stationIdentifier = (ActorObject?)_saveFileReader.GetActCompObject(stop.StationIdentifierPathName);
                 if (stationIdentifier == null) continue;
 
+                string stationName = GetTrainStationName(stationIdentifier);
                 ActorObject actorStation = GetStationFromIdentifier(stationIdentifier);
-                TrainStation station = LoadTrainStation(actorStation, "");
+                TrainStation station = (trainStation.Name == stationName) ? trainStation : LoadTrainStation(actorStation, "");
 
                 for (int i = 0; i < station.DockingStations.Count && i < train.FreightWagons.Count; i++)
                 {
@@ -254,17 +356,24 @@ namespace FactoryPlanner.ViewModels
                     {
                         if (stop.UnloadFilter.Count > 0 && !stop.UnloadFilter.Contains(item.ItemPathName)) continue;
 
+                        if (freightWagon.Items.Find(o => o.ItemPathName == item.ItemPathName) is Item requestedItem)
+                        {
+                            // docking station
+                            if (dockingStation.IncomingItems.Find(o => o.ItemPathName == item.ItemPathName) is Item dockingItem)
+                                dockingItem.Rate += (requestedItem.Rate >= item.Rate) ? item.Rate : requestedItem.Rate;
+                            else
+                                dockingStation.IncomingItems.Add(item);
+                        }
+
                         // freight wagon
                         if (freightWagon.Items.Find(o => o.ItemPathName == item.ItemPathName) is Item freightItem)
                             freightItem.Rate -= item.Rate;
                         else
+                        {
                             freightWagon.Items.Add(item);
-
-                        // docking station
-                        if (dockingStation.IncomingItems.Find(o => o.ItemPathName == item.ItemPathName) is Item dockingItem)
-                            dockingItem.Rate += item.Rate;
-                        else
-                            freightWagon.Items.Add(item);
+                            freightWagon.Items.Last().Rate = -item.Rate;
+                        }
+                        
                     }
 
                     foreach (var item in dockingStation.OutgoingItems)
@@ -272,8 +381,8 @@ namespace FactoryPlanner.ViewModels
                         if (stop.LoadFilter.Count > 0 && !stop.LoadFilter.Contains(item.ItemPathName)) continue;
 
                         // freight wagon
-                        if (freightWagon.Items.Find(o => o.ItemPathName == item.ItemPathName) is Item foundItem)     
-                            foundItem.Rate += item.Rate;  
+                        if (freightWagon.Items.Find(o => o.ItemPathName == item.ItemPathName) is Item foundItem)
+                            foundItem.Rate += item.Rate;
                         else
                             freightWagon.Items.Add(item);
 
@@ -283,7 +392,7 @@ namespace FactoryPlanner.ViewModels
             }
         }
 
-        List<ActorObject> GetConnectedBuildings(ActorObject building, string buildingPathName, PortType portType)
+        List<ActorObject> GetConnectedBuildings(ActorObject building, List<string> buildingPathNames, PortType portType)
         {
             List<ActorObject> connectedBuildings = [];
             List<ActCompObject> ports;
@@ -296,7 +405,7 @@ namespace FactoryPlanner.ViewModels
             {
                 PropertyListEntry? conComponent = SaveFileReader.GetPropertyByName(port, "mConnectedComponent");
                 if (conComponent == null) continue;
-                //TODO FIX loop issue caused by forwarding portType to recursion
+
                 ObjectProperty? objProperty = (ObjectProperty?)conComponent.Property;
                 if (objProperty == null) continue;
 
@@ -304,20 +413,24 @@ namespace FactoryPlanner.ViewModels
                 ActorObject? conveyorObject = (ActorObject?)_saveFileReader.GetActCompObject(conveyorPathName);
                 if (conveyorObject == null) continue;
 
-                ActorObject? connectedBuilding = GetConnectedBuildingFromConveyor(conveyorObject, buildingPathName);
+                ActorObject? connectedBuilding = GetConnectedBuildingFromConveyor(conveyorObject, buildingPathNames);
                 if (connectedBuilding == null || connectedBuilding.ComponentCount == 0) continue;
 
                 string connectedBuildingPathName = connectedBuilding.Components.First().PathName;
                 connectedBuildingPathName = connectedBuildingPathName[..connectedBuildingPathName.LastIndexOf('.')];
+
                 bool isConveyorAttachment = connectedBuildingPathName.Contains("Persistent_Level:PersistentLevel.Build_ConveyorAttachment");
                 bool isConveyor = connectedBuildingPathName.Contains("Persistent_Level:PersistentLevel.Build_Conveyor"); // also true when ConveyorAttachment
+
+                buildingPathNames.Add(connectedBuildingPathName);
+
                 if (isConveyorAttachment)
                 {
-                    connectedBuildings.AddRange(GetConnectedBuildings(connectedBuilding, connectedBuildingPathName, portType));
+                    connectedBuildings.AddRange(GetConnectedBuildings(connectedBuilding, buildingPathNames, portType));
                 }
                 else if (isConveyor)
                 {
-                    var value = GetConnectedBuildingFromConveyor(connectedBuilding, connectedBuildingPathName);
+                    var value = GetConnectedBuildingFromConveyor(connectedBuilding, buildingPathNames);
                     if (value != null)
                         connectedBuildings.Add(value);
                 }
@@ -337,7 +450,7 @@ namespace FactoryPlanner.ViewModels
         /// <param name="conveyor">An ActorObject of a Conveyor Belt</param>
         /// <param name="filter">A pathName for the building to ignore</param>
         /// <returns>An ActorObject to the connected building, null when not connected or wrong ActorObject passed</returns>
-        ActorObject? GetConnectedBuildingFromConveyor(ActorObject conveyor, string filter)
+        ActorObject? GetConnectedBuildingFromConveyor(ActorObject conveyor, List<string> filter)
         {
             foreach (var item in conveyor.Components)
             {
@@ -352,13 +465,15 @@ namespace FactoryPlanner.ViewModels
                     bool isConveyorAttachment = pathName.Contains("Persistent_Level:PersistentLevel.Build_ConveyorAttachment");
                     bool isConveyor = pathName.Contains("Persistent_Level:PersistentLevel.Build_Conveyor"); // also true when ConveyorAttachment
 
-                    if (filter != pathName)
+                    if (!filter.Contains(pathName))
                     {
                         if (!isConveyorAttachment && isConveyor)
                         {
                             if (_saveFileReader.GetActCompObject(pathName) is not ActorObject newConveyor) return null;
+                            string newFilter = item.PathName[..item.PathName.LastIndexOf('.')];
+                            filter.Add(newFilter);
 
-                            return GetConnectedBuildingFromConveyor(newConveyor, item.PathName[..item.PathName.LastIndexOf('.')]);
+                            return GetConnectedBuildingFromConveyor(newConveyor, filter);
                         }
                         else
                         {

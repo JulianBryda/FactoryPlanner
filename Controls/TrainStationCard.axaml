@@ -11,6 +11,12 @@
          https://docs.avaloniaui.net/docs/guides/styles-and-resources/how-to-use-theme-variants
   -->
 
+	<Design.PreviewWith>
+		<Border>
+			<controls:TrainStationCard />
+		</Border>
+	</Design.PreviewWith>
+	
 	<ControlTheme x:Key="{x:Type controls:TrainStationCard}" TargetType="controls:TrainStationCard">
 		<Setter Property="Template">
 			<Setter.Value>
@@ -34,36 +40,37 @@
 							<ItemsControl ItemsSource="{Binding TrainStation.DockingStations, RelativeSource={RelativeSource TemplatedParent}}">
 								<ItemsControl.ItemTemplate>
 									<DataTemplate x:DataType="models:DockingStation">
-										<Grid ColumnDefinitions="0.4*, *, 0.4*, *" RowDefinitions="*, Auto" >
-											<Image Margin="3" Grid.Column="0" Source="/Assets/Icons/Arrow_Down.png" />
-											<Image Margin="3" Grid.Column="2" Source="/Assets/Icons/Arrow_Up.png" />
+										<Border Margin="0 5" CornerRadius="20" Background="{DynamicResource BorderCardBackground}" >
+											<Grid Margin="0 5" ColumnDefinitions="0.4*, *, 0.4*, *" RowDefinitions="*, Auto" >
+												<Image Margin="3" Grid.Column="0" Source="/Assets/Icons/Arrow_Down.png" />
+												<Image Margin="3" Grid.Column="2" Source="/Assets/Icons/Arrow_Up.png" />
 
-											<TextBlock Grid.Column="1" Foreground="{Binding IncomingTextBrush}" Text="{Binding IncomingRate, StringFormat={}{0:N2}/min}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-											<TextBlock Grid.Column="3" Foreground="{Binding OutgoingTextBrush}" Text="{Binding OutgoingRate, StringFormat={}{0:N2}/min}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+												<TextBlock Grid.Column="1" Foreground="{Binding IncomingTextBrush}" Text="{Binding IncomingRate, StringFormat={}{0:N2}/min}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+												<TextBlock Grid.Column="3" Foreground="{Binding OutgoingTextBrush}" Text="{Binding OutgoingRate, StringFormat={}{0:N2}/min}" HorizontalAlignment="Center" VerticalAlignment="Center" />
 
-											<ItemsControl Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" ItemsSource="{Binding IncomingItems}" >
-												<ItemsControl.ItemTemplate>
-													<DataTemplate>
-														<Grid ColumnDefinitions="0.4*, *">
-															<Image Margin="8" Source="{Binding Icon}" />
-															<TextBlock Grid.Column="1" Text="{Binding Rate, StringFormat={}{0:N2}/min}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-														</Grid>
-													</DataTemplate>
-												</ItemsControl.ItemTemplate>
-											</ItemsControl>
+												<ItemsControl Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" ItemsSource="{Binding IncomingItems}" >
+													<ItemsControl.ItemTemplate>
+														<DataTemplate>
+															<Grid ColumnDefinitions="0.4*, *">
+																<Image Margin="8" Source="{Binding Icon}" />
+																<TextBlock Grid.Column="1" Text="{Binding Rate, StringFormat={}{0:N2}/min}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+															</Grid>
+														</DataTemplate>
+													</ItemsControl.ItemTemplate>
+												</ItemsControl>
 
-											<ItemsControl Grid.Row="1" Grid.Column="2" Grid.ColumnSpan="2" ItemsSource="{Binding OutgoingItems}" >
-												<ItemsControl.ItemTemplate>
-													<DataTemplate>
-														<Grid ColumnDefinitions="0.4*, *">
-															<Image Margin="8" Source="{Binding Icon}" />
-															<TextBlock Grid.Column="1" Text="{Binding Rate, StringFormat={}{0:N2}/min}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-														</Grid>
-													</DataTemplate>
-												</ItemsControl.ItemTemplate>
-											</ItemsControl>
-
-										</Grid>
+												<ItemsControl Grid.Row="1" Grid.Column="2" Grid.ColumnSpan="2" ItemsSource="{Binding OutgoingItems}" >
+													<ItemsControl.ItemTemplate>
+														<DataTemplate>
+															<Grid ColumnDefinitions="0.4*, *">
+																<Image Margin="8" Source="{Binding Icon}" />
+																<TextBlock Grid.Column="1" Text="{Binding Rate, StringFormat={}{0:N2}/min}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+															</Grid>
+														</DataTemplate>
+													</ItemsControl.ItemTemplate>
+												</ItemsControl>
+											</Grid>
+										</Border>
 									</DataTemplate>
 								</ItemsControl.ItemTemplate>
 							</ItemsControl>
