@@ -1,4 +1,5 @@
 ﻿using Avalonia.Controls;
+using Avalonia.Input.TextInput;
 using FactoryPlanner.FileReader;
 using FactoryPlanner.FileReader.Structure;
 using FactoryPlanner.FileReader.Structure.Properties;
@@ -6,8 +7,10 @@ using FactoryPlanner.Models;
 using log4net;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using static FactoryPlanner.Models.DockingStation;
 
@@ -81,14 +84,18 @@ namespace FactoryPlanner.Helper
                 }
             }
 
-            return new()
+            Train train = new()
             {
                 Name = "",
                 Layout = layout,
+                IsReversed = false,
                 TimeTable = timeTable,
                 Locomotives = locomotives,
                 FreightWagons = freightWagons,
             };
+            train.IsReversed = IsTrainReversed(train);
+
+            return train;
         }
 
         private static TimeTable? LoadTimeTable(ActorObject trainObject)
@@ -104,8 +111,25 @@ namespace FactoryPlanner.Helper
 
             return new TimeTable()
             {
+                CurrentStopIndex = GetCurrentTimeTableStopIndex(timeTable),
                 Stops = LoadTimeTableStops(timeTable)
             };
+        }
+
+        /// <summary>
+        /// gets the index of the current stop of the timetable
+        /// </summary>
+        /// <param name="timeTable"></param>
+        /// <returns>The index of the current stop if found, else -1</returns>
+        private static int GetCurrentTimeTableStopIndex(ActorObject timeTable)
+        {
+            PropertyListEntry? stopsProperty = SaveFileReader.GetPropertyByName(timeTable, "mCurrentStop");
+            if (stopsProperty == null) return 0; // probably only one stop available
+
+            IntProperty? indexProperty = (IntProperty?)stopsProperty.Property;
+            if (indexProperty == null) throw new NullReferenceException("IntProperty of mCurrentStop was null!"); // should not happen
+
+            return indexProperty.Value;
         }
 
         private static List<TimeTableStop> LoadTimeTableStops(ActorObject timeTable)
@@ -170,6 +194,63 @@ namespace FactoryPlanner.Helper
             return descriptors;
         }
 
+        /// <summary>
+        /// Determines if a train is reversed or not. A train should only be reversable if it has one locomotive at the start and one at the end
+        /// </summary>
+        /// <param name="train"></param>
+        /// <returns></returns>
+        /// <exception cref="NullReferenceException"></exception>
+        public static bool IsTrainReversed(Train train)
+        {
+            ActorObject locomotive = train.Locomotives.First();
+            PropertyListEntry trackProperty = SaveFileReader.GetPropertyByName(locomotive, "mTrackPosition") ?? throw new NullReferenceException("Locomotive does not have mTrackPosition!");
+            StructProperty? trackStruct = (StructProperty?)trackProperty.Property ?? throw new NullReferenceException("Failed to get StructProperty");
+            RailroadTrackPosition trackPosition = (RailroadTrackPosition)trackStruct.Properties.First();
+
+            return trackPosition.Forward == -1; // -1 reversed | +1 not reversed
+        }
+
+        /// <summary>
+        /// Determines if a train is reversed at a specific station by tracking down the path from the current position to the desired station
+        /// </summary>
+        /// <param name="train"></param>
+        /// <param name="stationIdentifierPathName"></param>
+        /// <returns></returns>
+        public static bool IsTrainReversedAtStation(Train train, string stationIdentifierPathName)
+        {
+            if (train.TimeTable == null) throw new NullReferenceException("Timetable of train is null!");
+
+            int startIndex = train.TimeTable.CurrentStopIndex;
+            bool isReversed = train.IsReversed;
+
+            for (int j = 0; j < 2; j++)
+            {
+                for (int i = startIndex; i < train.TimeTable.Stops.Count; i++)
+                {
+                    var stop = train.TimeTable.Stops[i];
+
+                    if (stop.StationIdentifierPathName == stationIdentifierPathName)
+                        return isReversed;
+                    else if (IsTrainStationDeadEnd(stop.StationIdentifierPathName))
+                        isReversed = !isReversed;
+                }
+
+                startIndex = 0;
+            }
+
+            throw new Exception("Failed to determine if train is reversed at station");
+        }
+
+        public static ActorObject GetStationFromIdentifier(ActorObject stationIdentifier)
+        {
+            ObjectProperty stationProperty = (ObjectProperty?)stationIdentifier.Properties.First().Property ?? throw new NullReferenceException("Objectproperty mStation of StationIdentifier is null!");
+            string stationPathName = stationProperty.Reference.PathName;
+            ActorObject station = (ActorObject?)s_saveFileReader.GetActCompObject(stationPathName) ?? throw new NullReferenceException("Stationidentifier has no Station!");
+
+            return station;
+        }
+
+
         public static bool IsTrainStation(string pathName)
         {
             string trainStation = "Persistent_Level:PersistentLevel.Build_TrainStation";
@@ -203,6 +284,47 @@ namespace FactoryPlanner.Helper
         {
             string freightWagon = "Persistent_Level:PersistentLevel.BP_FreightWagon";
             return pathName[..freightWagon.Length] == freightWagon;
+        }
+
+        public static bool IsTrainStationDeadEnd(string stationIdentifierPathName) =>
+            IsTrainStationDeadEnd(GetStationFromIdentifier((ActorObject?)s_saveFileReader.GetActCompObject(stationIdentifierPathName) ?? throw new Exception("Could not get Station Identifier!")));
+        public static bool IsTrainStationDeadEnd(ActorObject trainStation)
+        {
+            PropertyListEntry track = SaveFileReader.GetPropertyByName(trainStation, "mRailroadTrack") ?? throw new NullReferenceException("Station has no integrated track!"); // if this error get's triggered i am cooked
+            ObjectProperty trackProperty = (ObjectProperty?)track.Property ?? throw new NullReferenceException("Track Property is null!"); // if this error get's triggered i am cooked too
+            ActorObject integratedTrack = (ActorObject?)s_saveFileReader.GetActCompObject(trackProperty.Reference.PathName) ?? throw new NullReferenceException("Failed to get integrated track!"); // if this error get's triggered i am cooked too
+
+            bool front = TraceRailroad(integratedTrack, 0, 5);
+            bool back = TraceRailroad(integratedTrack, 1, 5);
+
+            return front == false || back == false;
+        }
+
+        public static bool TraceRailroad(ActorObject track, int direction, int depth)
+        {
+            if (depth == 0) return true;
+
+            ObjectReference? connectedReference = track.Components.FirstOrDefault(o => o.PathName.Contains($"TrackConnection{direction}"));
+            if (connectedReference == null) return false;
+
+            ComponentObject? connected = (ComponentObject?)s_saveFileReader.GetActCompObject(connectedReference.PathName);
+            if (connected == null) return false;
+
+            PropertyListEntry? connectedComponents = SaveFileReader.GetPropertyByName(connected, "mConnectedComponents");
+            if (connectedComponents == null) return false;
+
+            ArrayProperty? connectedComponentsProperty = (ArrayProperty?)connectedComponents.Property;
+            if (connectedComponentsProperty == null) return false;
+
+            foreach (SimpleObjectProperty item in connectedComponentsProperty.Properties.Cast<SimpleObjectProperty>())
+            {
+                ActorObject? nextTrack = (ActorObject?)s_saveFileReader.GetActCompObject(item.Value.PathName[..item.Value.PathName.LastIndexOf('.')]);
+                if (nextTrack == null) return false;
+
+                return TraceRailroad(nextTrack, direction, depth - 1);
+            }
+
+            return false;
         }
     }
 }

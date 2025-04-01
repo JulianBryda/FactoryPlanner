@@ -8,6 +8,7 @@ namespace FactoryPlanner.Models
 {
     public class TimeTable
     {
+        public required int CurrentStopIndex { get; set; }
         public required List<TimeTableStop> Stops { get; set; }
     }
 

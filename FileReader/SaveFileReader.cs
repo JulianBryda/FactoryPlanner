@@ -87,6 +87,9 @@ namespace FactoryPlanner.FileReader
                 Body = new SaveFileBody(ref bodyReader);
                 s_log.Info("Successfully loaded save file body!");
 
+                bodyStream.Dispose();
+                bodyReader.Dispose();
+
                 OnFinish?.Invoke(this);
 
                 s_log.Info("Finished loading save file!");
