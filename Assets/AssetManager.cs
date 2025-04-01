@@ -8,6 +8,8 @@ using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 using System.Threading.Tasks;
 
 namespace FactoryPlanner.Assets
@@ -24,6 +26,7 @@ namespace FactoryPlanner.Assets
         };
 
         private static readonly JsonDocument s_recipes = JsonDocument.Parse(File.ReadAllText(".\\Assets\\recipes.json"));
+        private static readonly List<RessourceNode> s_nodes = JsonSerializer.Deserialize<List<RessourceNode>>(File.ReadAllText(".\\Assets\\nodes.json")) ?? throw new Exception("Could not deserialize nodes.json!");
 
         public static string GetIconPath(int typePathHash)
         {
@@ -40,12 +43,18 @@ namespace FactoryPlanner.Assets
         {
             PropertyNameCaseInsensitive = true,
         };
+
         public static Recipe? GetRecipe(string pathName)
         {
             JsonElement root = s_recipes.RootElement.GetProperty("recipes");
             if (!root.TryGetProperty(pathName[(pathName.LastIndexOf('.') + 1)..], out var element)) return null;
 
             return element.Deserialize<Recipe>(s_serializeOptions);
+        }
+
+        public static RessourceNode? GetRessourceNode(string pathName)
+        {
+            return s_nodes.Find(o => o.NodePathName == pathName);
         }
     }
 }

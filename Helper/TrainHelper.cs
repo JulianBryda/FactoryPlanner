@@ -1,16 +1,12 @@
-﻿using Avalonia.Controls;
-using Avalonia.Input.TextInput;
-using FactoryPlanner.FileReader;
+﻿using FactoryPlanner.FileReader;
 using FactoryPlanner.FileReader.Structure;
 using FactoryPlanner.FileReader.Structure.Properties;
 using FactoryPlanner.Models;
 using log4net;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
-using System.Text;
-using System.Threading;
+using System.Security;
 using System.Threading.Tasks;
 using static FactoryPlanner.Models.DockingStation;
 
@@ -20,6 +16,8 @@ namespace FactoryPlanner.Helper
     {
         private static readonly SaveFileReader s_saveFileReader = SaveFileReader.LoadedSaveFile;
         private static readonly ILog s_log = LogManager.GetLogger(typeof(TrainHelper));
+
+        private static readonly Dictionary<int, Train> s_trainCache = [];
 
         public static ActorObject GetRailroadSubsystem()
         {
@@ -36,8 +34,10 @@ namespace FactoryPlanner.Helper
             foreach (SimpleObjectProperty trainReference in trainProperty.Properties.Cast<SimpleObjectProperty>())
             {
                 int trainIndex = s_saveFileReader.GetIndexOf(trainReference.Value.PathName);
-                Train? train = GetTrain(trainIndex, 20);
-                if (train == null || train.TimeTable == null || train.TimeTable.Stops.Any(o => o.StationIdentifierPathName == stationIdentifierPathName) == false) continue;
+
+                Train? train = GetTrain(trainIndex, 20, trainReference.Value.PathName, false);
+                if (train == null || train.TimeTable == null || !train.TimeTable.Stops.Any(o => o.StationIdentifierPathName == stationIdentifierPathName)) continue;
+                SetFreightWagonItems(train);
 
                 trains.Add(train);
             }
@@ -45,8 +45,16 @@ namespace FactoryPlanner.Helper
             return trains;
         }
 
-        public static Train? GetTrain(int trainIndex, int searchRange)
+        public static Train? GetTrain(int trainIndex, int searchRange, string pathName, bool setFreightItems = true)
         {
+            //if (s_trainCache.TryGetValue(pathName.GetHashCode(), out Train? outTrain))
+            //{
+            //    if (setFreightItems && !outTrain.FreightItemsSet)
+            //        SetFreightWagonItems(outTrain);
+
+            //    return outTrain;
+            //}
+
             int min = 0;
             int max = s_saveFileReader.Body.Levels.Last().ActCompObjects.Length;
 
@@ -88,12 +96,18 @@ namespace FactoryPlanner.Helper
             {
                 Name = "",
                 Layout = layout,
+                FreightItemsSet = setFreightItems,
                 IsReversed = false,
                 TimeTable = timeTable,
                 Locomotives = locomotives,
                 FreightWagons = freightWagons,
             };
             train.IsReversed = IsTrainReversed(train);
+
+            //s_trainCache.Add(pathName.GetHashCode(), train);
+
+            if (setFreightItems)
+                SetFreightWagonItems(train);
 
             return train;
         }
@@ -160,8 +174,8 @@ namespace FactoryPlanner.Helper
                     EnumProperty? dockingDefinition = (EnumProperty?)dockingDefinitionProperty.Property;
                     if (dockingDefinition == null) continue;
 
-                    var loadFilter = GetFilterDescriptors(dockingRuleSetProperty, "LoadFilterDescriptors");
-                    var unloadFilter = GetFilterDescriptors(dockingRuleSetProperty, "UnloadFilterDescriptors");
+                    var loadFilter = TrainStationHelper.GetFilterDescriptors(dockingRuleSetProperty, "LoadFilterDescriptors");
+                    var unloadFilter = TrainStationHelper.GetFilterDescriptors(dockingRuleSetProperty, "UnloadFilterDescriptors");
 
                     timeTableStops.Add(new()
                     {
@@ -176,22 +190,49 @@ namespace FactoryPlanner.Helper
             return timeTableStops;
         }
 
-        private static List<string> GetFilterDescriptors(StructProperty dockingRuleSetProperty, string descriptorName)
+        private static void SetFreightWagonItems(Train train)
         {
-            List<string> descriptors = [];
+            if (train.TimeTable == null) return;
 
-            PropertyListEntry? entry = (PropertyListEntry?)dockingRuleSetProperty.Properties.FirstOrDefault(o => ((PropertyListEntry)o).Name == descriptorName);
-            if (entry == null) return descriptors;
-
-            ArrayProperty? property = (ArrayProperty?)entry.Property;
-            if (property == null) return descriptors;
-
-            foreach (SimpleObjectProperty item in property.Properties.Cast<SimpleObjectProperty>())
+            foreach (TimeTableStop stop in train.TimeTable.Stops)
             {
-                descriptors.Add(item.Value.PathName);
-            }
+                ActorObject? stationIdentifier = (ActorObject?)s_saveFileReader.GetActCompObject(stop.StationIdentifierPathName);
+                if (stationIdentifier == null) continue;
 
-            return descriptors;
+                string stationName = TrainStationHelper.GetTrainStationName(stationIdentifier);
+                bool isTrainReversed = IsTrainReversedAtStation(train, stop.StationIdentifierPathName);
+                ActorObject actorStation = TrainStationHelper.GetStationFromIdentifier(stationIdentifier);
+                TrainStation station = TrainStationHelper.GetTrainStation(actorStation, stationName, stop.StationIdentifierPathName, false);
+
+                for (int i = 0; i < station.DockingStations.Count && i < train.FreightWagons.Count; i++)
+                {
+                    int freightIndex = i;
+                    if (isTrainReversed)
+                        freightIndex = train.FreightWagons.Count - 1 - i;
+
+                    var dockingStation = station.DockingStations[i];
+                    var freightWagon = train.FreightWagons[freightIndex];
+
+                    SetTrainItems(dockingStation, freightWagon, stop);
+                }
+            }
+        }
+
+        private static void SetTrainItems(DockingStation dockingStation, FreightWagon freightWagon, TimeTableStop stop)
+        {
+            foreach (var item in dockingStation.OutgoingItems)
+            {
+                if (stop.LoadFilter.Count > 0 &&
+                    !stop.LoadFilter.Any(o => o[(o.LastIndexOf('.') + 1)..] == item.ItemPathName)) continue;
+
+                // freight wagon
+                if (freightWagon.Items.Find(o => o.ItemPathName == item.ItemPathName) is Item foundItem)
+                    foundItem.Rate += item.Rate;
+                else
+                    freightWagon.Items.Add(item);
+
+                // i could add a neededItems property to DockingStations for exports in the future
+            }
         }
 
         /// <summary>
@@ -203,11 +244,9 @@ namespace FactoryPlanner.Helper
         public static bool IsTrainReversed(Train train)
         {
             ActorObject locomotive = train.Locomotives.First();
-            PropertyListEntry trackProperty = SaveFileReader.GetPropertyByName(locomotive, "mTrackPosition") ?? throw new NullReferenceException("Locomotive does not have mTrackPosition!");
-            StructProperty? trackStruct = (StructProperty?)trackProperty.Property ?? throw new NullReferenceException("Failed to get StructProperty");
-            RailroadTrackPosition trackPosition = (RailroadTrackPosition)trackStruct.Properties.First();
+            PropertyListEntry? reversedProperty = SaveFileReader.GetPropertyByName(locomotive, "mIsOrientationReversed");
 
-            return trackPosition.Forward == -1; // -1 reversed | +1 not reversed
+            return reversedProperty != null;
         }
 
         /// <summary>
@@ -231,7 +270,7 @@ namespace FactoryPlanner.Helper
 
                     if (stop.StationIdentifierPathName == stationIdentifierPathName)
                         return isReversed;
-                    else if (IsTrainStationDeadEnd(stop.StationIdentifierPathName))
+                    else if (TrainStationHelper.IsTrainStationDeadEnd(stop.StationIdentifierPathName))
                         isReversed = !isReversed;
                 }
 
@@ -240,16 +279,6 @@ namespace FactoryPlanner.Helper
 
             throw new Exception("Failed to determine if train is reversed at station");
         }
-
-        public static ActorObject GetStationFromIdentifier(ActorObject stationIdentifier)
-        {
-            ObjectProperty stationProperty = (ObjectProperty?)stationIdentifier.Properties.First().Property ?? throw new NullReferenceException("Objectproperty mStation of StationIdentifier is null!");
-            string stationPathName = stationProperty.Reference.PathName;
-            ActorObject station = (ActorObject?)s_saveFileReader.GetActCompObject(stationPathName) ?? throw new NullReferenceException("Stationidentifier has no Station!");
-
-            return station;
-        }
-
 
         public static bool IsTrainStation(string pathName)
         {
@@ -284,47 +313,6 @@ namespace FactoryPlanner.Helper
         {
             string freightWagon = "Persistent_Level:PersistentLevel.BP_FreightWagon";
             return pathName[..freightWagon.Length] == freightWagon;
-        }
-
-        public static bool IsTrainStationDeadEnd(string stationIdentifierPathName) =>
-            IsTrainStationDeadEnd(GetStationFromIdentifier((ActorObject?)s_saveFileReader.GetActCompObject(stationIdentifierPathName) ?? throw new Exception("Could not get Station Identifier!")));
-        public static bool IsTrainStationDeadEnd(ActorObject trainStation)
-        {
-            PropertyListEntry track = SaveFileReader.GetPropertyByName(trainStation, "mRailroadTrack") ?? throw new NullReferenceException("Station has no integrated track!"); // if this error get's triggered i am cooked
-            ObjectProperty trackProperty = (ObjectProperty?)track.Property ?? throw new NullReferenceException("Track Property is null!"); // if this error get's triggered i am cooked too
-            ActorObject integratedTrack = (ActorObject?)s_saveFileReader.GetActCompObject(trackProperty.Reference.PathName) ?? throw new NullReferenceException("Failed to get integrated track!"); // if this error get's triggered i am cooked too
-
-            bool front = TraceRailroad(integratedTrack, 0, 5);
-            bool back = TraceRailroad(integratedTrack, 1, 5);
-
-            return front == false || back == false;
-        }
-
-        public static bool TraceRailroad(ActorObject track, int direction, int depth)
-        {
-            if (depth == 0) return true;
-
-            ObjectReference? connectedReference = track.Components.FirstOrDefault(o => o.PathName.Contains($"TrackConnection{direction}"));
-            if (connectedReference == null) return false;
-
-            ComponentObject? connected = (ComponentObject?)s_saveFileReader.GetActCompObject(connectedReference.PathName);
-            if (connected == null) return false;
-
-            PropertyListEntry? connectedComponents = SaveFileReader.GetPropertyByName(connected, "mConnectedComponents");
-            if (connectedComponents == null) return false;
-
-            ArrayProperty? connectedComponentsProperty = (ArrayProperty?)connectedComponents.Property;
-            if (connectedComponentsProperty == null) return false;
-
-            foreach (SimpleObjectProperty item in connectedComponentsProperty.Properties.Cast<SimpleObjectProperty>())
-            {
-                ActorObject? nextTrack = (ActorObject?)s_saveFileReader.GetActCompObject(item.Value.PathName[..item.Value.PathName.LastIndexOf('.')]);
-                if (nextTrack == null) return false;
-
-                return TraceRailroad(nextTrack, direction, depth - 1);
-            }
-
-            return false;
         }
     }
 }

@@ -44,7 +44,7 @@ namespace FactoryPlanner.ViewModels
                 SimpleObjectProperty trainReference = (SimpleObjectProperty)trainProperty.Properties[i];
 
                 int trainIndex = _saveFileReader.GetIndexOf(trainReference.Value.PathName);
-                Train? train = TrainHelper.GetTrain(trainIndex, 20);
+                Train? train = TrainHelper.GetTrain(trainIndex, 20, trainReference.Value.PathName);
                 if (train == null) continue;
 
                 train.Name = $"Locomotives: {train.Locomotives.Count} | FreightWagons: {train.FreightWagons.Count}";
