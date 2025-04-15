@@ -51,8 +51,10 @@ namespace FactoryPlanner.FileReader
 
             s_log.Info($"Loading save file \"{Path}\"...");
 
+#if RELEASE
             var task = Task.Run(() =>
             {
+#endif
                 byte[] bytes = File.ReadAllBytes(Path);
                 MemoryStream stream = new(bytes);
                 BinaryReader reader = new(stream);
@@ -81,6 +83,10 @@ namespace FactoryPlanner.FileReader
 
                 bodyStream.Position = 0;
 
+#if DEBUG
+                File.WriteAllBytes("DecompressedBody.bin", bodyStream.ToArray());
+#endif
+
                 Task.Run(() => ProgressUpdater(ref bodyStream));
 
                 s_log.Info("Loading save file body...");
@@ -93,10 +99,12 @@ namespace FactoryPlanner.FileReader
                 OnFinish?.Invoke(this);
 
                 s_log.Info("Finished loading save file!");
+#if RELEASE
             });
 
             if (blockThread)
                 task.Wait();
+#endif
         }
 
         public enum Type

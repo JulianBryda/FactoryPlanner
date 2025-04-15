@@ -18,6 +18,7 @@ namespace FactoryPlanner.FileReader.Structure
         public string MapName { get; set; } = ReadString(ref reader);
         public string MapOptions { get; set; } = ReadString(ref reader);
         public string SessionName { get; set; } = ReadString(ref reader);
+        public string SaveName { get; set; } = ReadString(ref reader);
         public uint PlayedSeconds { get; set; } = reader.ReadUInt32();
         public ulong SaveTimestamp { get; set; } = reader.ReadUInt64();
         public byte SessionVisibility { get; set; } = reader.ReadByte();

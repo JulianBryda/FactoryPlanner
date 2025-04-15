@@ -8,10 +8,15 @@ using System.Threading.Tasks;
 
 namespace FactoryPlanner.FileReader.Structure.Properties
 {
-    public class Property(ref BinaryReader reader) : SaveFile(ref reader)
+    public class Property : SaveFile
     {
+        public Property(ref BinaryReader reader) : base(ref reader)
+        {
+            s_log.Debug($"Current Property: {this.GetType().Name}");
+        }
 
-        protected static Property CreateByType(string type, ref BinaryReader reader)
+
+        protected static Property CreateByType(string type, uint size, ref BinaryReader reader)
         {
             return type switch
             {
@@ -31,7 +36,7 @@ namespace FactoryPlanner.FileReader.Structure.Properties
                 "SoftObjectProperty" => new SoftObjectProperty(ref reader),
                 "SetProperty" => new SetProperty(ref reader),
                 "StrProperty" => new StrProperty(ref reader),
-                "StructProperty" => new StructProperty(ref reader),
+                "StructProperty" => new StructProperty(ref reader, size),
                 "TextProperty" => new TextProperty(ref reader),
                 _ => throw new Exception("Type not known!"),
             };
@@ -70,6 +75,8 @@ namespace FactoryPlanner.FileReader.Structure.Properties
                 "Vector2D" => new Vector2D(ref reader),
                 "DateTime" => new DateTime(ref reader),
                 "ClientIdentityInfo" => new ClientIdentityInfo(ref reader),
+                "Guid" => new SkipBytes(ref reader, 16),
+                "Vector_NetQuantize" => new VectorNetQuantize(ref reader),
                 _ => null
             };
         }
@@ -153,6 +160,8 @@ namespace FactoryPlanner.FileReader.Structure.Properties
             Dictionary<Property, Property> mapElements = [];
             for (int i = 0; i < NumberOfElements; i++)
             {
+                s_log.Debug($"Loading MapElement {i} | Stream Position: {reader.BaseStream.Position}");
+
                 Property keyProperty = KeyType switch
                 {
                     "ObjectProperty" => new SimpleObjectProperty(ref reader),
@@ -269,10 +278,16 @@ namespace FactoryPlanner.FileReader.Structure.Properties
 
     internal class StructProperty : Property
     {
-        public StructProperty(ref BinaryReader reader) : base(ref reader)
+        public StructProperty(ref BinaryReader reader, uint size) : base(ref reader)
         {
             Type = ReadString(ref reader);
-            _ = reader.ReadBytes(17); // padding
+            reader.BaseStream.Position += 17; // padding
+
+            if (size == 0)
+            {
+                Properties = [];
+                return;
+            }
 
             Property? typedData = CheckTypedData(Type, ref reader);
             if (typedData != null)
