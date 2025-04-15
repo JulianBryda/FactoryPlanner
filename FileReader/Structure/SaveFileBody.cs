@@ -1,18 +1,9 @@
 ﻿using FactoryPlanner.FileReader.Structure.Properties;
-using SkiaSharp;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Reflection;
-using System.Reflection.Emit;
-using System.Reflection.PortableExecutable;
-using System.Runtime.InteropServices.Marshalling;
-using System.Security.Cryptography.X509Certificates;
-using System.Text;
-using System.Threading.Tasks;
-using Tmds.DBus.Protocol;
 
 namespace FactoryPlanner.FileReader.Structure
 {
@@ -29,6 +20,8 @@ namespace FactoryPlanner.FileReader.Structure
             string none2 = ReadString(ref reader); // should be "None"
             _ = reader.ReadUInt32();
 
+            long groupingGridsSize = reader.BaseStream.Position;
+
             List<GroupingGrid> groupingGrids = [];
             for (int i = 0; i < 5; i++) // 5 grouping grids fix
             {
@@ -36,11 +29,14 @@ namespace FactoryPlanner.FileReader.Structure
             }
             GroupingGrid = [.. groupingGrids];
 
+            s_log.Debug($"GroupingGrid Size: {reader.BaseStream.Position - groupingGridsSize}");
+
             SublevelCount = reader.ReadUInt32();
 
             List<Level> levels = [];
             for (int i = 0; i <= SublevelCount; i++) // one more level than sublevel count, last one ist persistent level
             {
+                s_log.Debug($"Loading Level {i}");
                 levels.Add(new Level(ref reader, i == SublevelCount));
             }
 
@@ -86,6 +82,7 @@ namespace FactoryPlanner.FileReader.Structure
             List<ObjectHeader> headers = [];
             for (int i = 0; i < ObjectHeaderCount; i++)
             {
+                s_log.Debug($"Loading ObjectHeader {i} | Stream Position: {reader.BaseStream.Position}");
                 headers.Add(new ObjectHeader(ref reader));
             }
             ObjectHeaders = [.. headers];
@@ -111,20 +108,24 @@ namespace FactoryPlanner.FileReader.Structure
             {
                 if (header.Type == ObjectHeader.HeaderType.ActorHeader)
                 {
+                    s_log.Debug($"Loading ActorObject {actCompObjects.Count} | Stream Position: {reader.BaseStream.Position}");
                     actCompObjects.Add(new ActorObject(ref reader));
                 }
                 else
                 {
+                    s_log.Debug($"Loading ComponentObject {actCompObjects.Count} | Stream Position: {reader.BaseStream.Position}");
                     actCompObjects.Add(new ComponentObject(ref reader));
                 }
             }
             ActCompObjects = [.. actCompObjects];
 
+            SecondCollectablesSize = reader.ReadUInt32();
             SecondCollectablesCount = reader.ReadUInt32();
 
             List<ObjectReference> secondCollectables = [];
             for (int i = 0; i < SecondCollectablesCount; i++)
             {
+                s_log.Debug($"Loading SecondCollectable {i} | Stream Position: {reader.BaseStream.Position}");
                 secondCollectables.Add(new ObjectReference(ref reader));
             }
             SecondCollectables = [.. secondCollectables];
@@ -135,11 +136,12 @@ namespace FactoryPlanner.FileReader.Structure
         public uint ObjectHeaderCount { get; set; }
         public ObjectHeader[] ObjectHeaders { get; set; } = [];
         public uint CollectablesCount { get; set; }
-        public ObjectReference[] Collectables { get; set; }
+        //public ObjectReference[] Collectables { get; set; }
         public ulong ObjectsSize { get; set; }
         public uint ObjectCount { get; set; }
         public ActCompObject[] ActCompObjects { get; set; }
         public uint SecondCollectablesCount { get; set; }
+        public uint SecondCollectablesSize { get; set; }
         public ObjectReference[] SecondCollectables { get; set; }
     }
 
@@ -188,6 +190,9 @@ namespace FactoryPlanner.FileReader.Structure
             RotationY = reader.ReadSingle();
             RotationZ = reader.ReadSingle();
             RotationW = reader.ReadSingle();
+
+            reader.BaseStream.Position += 4; // additional bytes since new update
+
             PositionX = reader.ReadSingle();
             PositionY = reader.ReadSingle();
             PositionZ = reader.ReadSingle();
@@ -215,6 +220,7 @@ namespace FactoryPlanner.FileReader.Structure
     {
         public ComponentHeader(ref BinaryReader reader) : base(ref reader)
         {
+            reader.BaseStream.Position += 4; // additional bytes since update 1.1
             ParentActorName = ReadString(ref reader);
         }
 
@@ -248,6 +254,7 @@ namespace FactoryPlanner.FileReader.Structure
             List<ObjectReference> components = [];
             for (int i = 0; i < ComponentCount; i++)
             {
+                s_log.Debug($"Loading Component {i} | Stream Position: {reader.BaseStream.Position}");
                 components.Add(new ObjectReference(ref reader));
             }
             Components = [.. components];
@@ -255,6 +262,7 @@ namespace FactoryPlanner.FileReader.Structure
             List<PropertyListEntry> properties = [];
             do
             {
+                s_log.Debug($"Loading PropertyListEntry {properties.Count} | Stream Position: {reader.BaseStream.Position}");
                 properties.Add(new PropertyListEntry(ref reader));
             }
             while (properties.Last().Name != "None");

@@ -144,4 +144,28 @@ namespace FactoryPlanner.FileReader.Structure.Properties
             // Identity Data skiped for now
         }
     }
+
+    internal class SkipBytes : Property
+    {
+        public SkipBytes(ref BinaryReader reader, int byteCount) : base(ref reader)
+        {
+            reader.BaseStream.Position += byteCount; // skip bytes cause content not needed 
+        }
+    }
+
+    internal class VectorNetQuantize : Property
+    {
+        public VectorNetQuantize(ref BinaryReader reader) : base(ref reader)
+        {
+            List<PropertyListEntry> properties = [];
+            do
+            {
+                properties.Add(new PropertyListEntry(ref reader));
+            }
+            while (properties.Last().Name != "None");
+            Properties = [.. properties[..^1]];
+        }
+
+        public Property[] Properties { get; set; }
+    }
 }

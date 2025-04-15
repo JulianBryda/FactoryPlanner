@@ -24,7 +24,8 @@ namespace FactoryPlanner.FileReader.Structure.Properties
                 Type = ReadString(ref reader);
                 Size = reader.ReadUInt32();
                 Index = reader.ReadUInt32();
-                Property = CreateByType(Type, ref reader);
+
+                Property = CreateByType(Type, Size, ref reader);
             }
         }
 

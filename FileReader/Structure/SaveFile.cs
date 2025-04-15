@@ -1,4 +1,5 @@
-﻿using System;
+﻿using log4net;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -11,6 +12,7 @@ namespace FactoryPlanner.FileReader.Structure
 {
     public abstract class SaveFile
     {
+        protected static readonly ILog s_log = LogManager.GetLogger(typeof(SaveFile));
         public SaveFile(ref BinaryReader reader)
         {
         }
@@ -19,6 +21,10 @@ namespace FactoryPlanner.FileReader.Structure
         {
             int length = reader.ReadInt32();
             if (length == 0) return "";
+#if DEBUG
+            if (length >= 500)
+                s_log.Warn($"Long string length \"{length}\" at position {reader.BaseStream.Position}!");
+#endif
 
             byte[] bytes;
             string content;
