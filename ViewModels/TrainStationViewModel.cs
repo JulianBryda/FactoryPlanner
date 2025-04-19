@@ -1,28 +1,13 @@
-﻿using Avalonia.Controls.Primitives;
-using Avalonia.Input;
-using CommunityToolkit.Mvvm.ComponentModel;
-using DynamicData;
-using FactoryPlanner.Assets;
-using FactoryPlanner.FileReader;
+﻿using FactoryPlanner.FileReader;
 using FactoryPlanner.FileReader.Structure;
-using FactoryPlanner.FileReader.Structure.Properties;
 using FactoryPlanner.Helper;
 using FactoryPlanner.Models;
-using ICSharpCode.SharpZipLib.Zip;
 using log4net;
 using ReactiveUI;
 using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.ComponentModel.Design;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
 using System.Reactive;
-using System.Reflection.Metadata.Ecma335;
-using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
-using static FactoryPlanner.Models.DockingStation;
 
 namespace FactoryPlanner.ViewModels
 {

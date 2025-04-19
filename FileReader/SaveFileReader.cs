@@ -3,15 +3,12 @@ using ICSharpCode.SharpZipLib.Zip.Compression.Streams;
 using ICSharpCode.SharpZipLib.Zip.Compression;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Threading;
-using log4net;
-using System.Security.Cryptography;
-using System.Reflection.Metadata;
 using FactoryPlanner.FileReader.Structure.Properties;
+using log4net;
 
 namespace FactoryPlanner.FileReader
 {
@@ -51,10 +48,8 @@ namespace FactoryPlanner.FileReader
 
             s_log.Info($"Loading save file \"{Path}\"...");
 
-#if RELEASE
             var task = Task.Run(() =>
             {
-#endif
                 byte[] bytes = File.ReadAllBytes(Path);
                 MemoryStream stream = new(bytes);
                 BinaryReader reader = new(stream);
@@ -99,12 +94,10 @@ namespace FactoryPlanner.FileReader
                 OnFinish?.Invoke(this);
 
                 s_log.Info("Finished loading save file!");
-#if RELEASE
             });
 
             if (blockThread)
                 task.Wait();
-#endif
         }
 
         public enum Type

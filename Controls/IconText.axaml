@@ -13,7 +13,9 @@
 	<Design.PreviewWith>
 		<StackPanel Width="200" Spacing="10">
 			<StackPanel Background="{DynamicResource SystemRegionBrush}">
-				<controls:IconText ImageMargin="10" ImageSource="./Assets/Icons/Smelter.png" Text="Test" />
+				<controls:IconText ImageMargin="10" ImageSource="./Assets/Icons/Smelter.png" >
+					<TextBlock Text="Test" />
+				</controls:IconText>
 			</StackPanel>
 		</StackPanel>
 	</Design.PreviewWith>
@@ -24,7 +26,7 @@
 				<ControlTemplate TargetType="controls:IconText">
 					<Grid ColumnDefinitions="*, *">
 						<Image Source="{TemplateBinding ImageSource}" Margin="{TemplateBinding ImageMargin}" VerticalAlignment="Center" HorizontalAlignment="Center" Stretch="UniformToFill" />
-						<TextBlock Text="{TemplateBinding Text}" HorizontalAlignment="Center" VerticalAlignment="Center" Grid.Column="1"/>
+						<ContentPresenter Content="{TemplateBinding Content}" Grid.Column="1" />
 					</Grid>
 				</ControlTemplate>
 			</Setter.Value>

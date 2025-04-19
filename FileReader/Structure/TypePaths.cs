@@ -25,7 +25,7 @@ namespace FactoryPlanner.FileReader.Structure
         public static readonly int FoundationPassthrough = "/Game/FactoryGame/Buildable/Factory/FoundationPassthrough/Build_FoundationPassthrough_Lift.Build_FoundationPassthrough_Lift_C".GetHashCode();
         public static readonly int AssemblerMk1 = "/Game/FactoryGame/Buildable/Factory/AssemblerMk1/Build_AssemblerMk1.Build_AssemblerMk1_C".GetHashCode();
         public static readonly int ConveyorPoleStackable = "/Game/FactoryGame/Buildable/Factory/ConveyorPoleStackable/Build_ConveyorPoleStackable.Build_ConveyorPoleStackable_C".GetHashCode();
-        public static readonly int MinerMK1 = "/Game/FactoryGame/Buildable/Factory/MinerMK1/Build_MinerMk1.Build_MinerMk1_C".GetHashCode();
+        public static readonly int MinerMk1 = "/Game/FactoryGame/Buildable/Factory/MinerMK1/Build_MinerMk1.Build_MinerMk1_C".GetHashCode();
         public static readonly int ConveyorBeltMk2 = "/Game/FactoryGame/Buildable/Factory/ConveyorBeltMk2/Build_ConveyorBeltMk2.Build_ConveyorBeltMk2_C".GetHashCode();
         public static readonly int FoundryMk1 = "/Game/FactoryGame/Buildable/Factory/FoundryMk1/Build_FoundryMk1.Build_FoundryMk1_C".GetHashCode();
         public static readonly int ConveyorLiftMk2 = "/Game/FactoryGame/Buildable/Factory/ConveyorLiftMk2/Build_ConveyorLiftMk2.Build_ConveyorLiftMk2_C".GetHashCode();

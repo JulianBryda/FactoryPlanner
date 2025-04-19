@@ -1,4 +1,5 @@
 ﻿using Avalonia.Media.Imaging;
+using CommunityToolkit.Mvvm.ComponentModel;
 using FactoryPlanner.FileReader;
 using FactoryPlanner.FileReader.Structure;
 using ReactiveUI;
@@ -8,30 +9,60 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
-using System.Text;
+using System.Reactive;
 using System.Text.Json.Nodes;
-using System.Threading.Tasks;
 
 namespace FactoryPlanner.ViewModels
 {
     public class DashboardViewModel : ViewModelBase
     {
+        private int _progress;
+        public int Progress
+        {
+            get => _progress;
+            set => this.RaiseAndSetIfChanged(ref _progress, value);
+        }
 
-        public int Progress { get; set; }
-        public bool ProgressBarVisible { get; set; } = true;
+        private bool _progressBarVisible = true;
+        public bool ProgressBarVisible
+        {
+            get => _progressBarVisible;
+            set => this.RaiseAndSetIfChanged(ref _progressBarVisible, value);
+        }
+
+        private bool _stablePatchNotes = true;
+        public bool StablePatchNotes
+        {
+            get => _stablePatchNotes;
+            set => this.RaiseAndSetIfChanged(ref _stablePatchNotes, value);
+        }
+
+        private List<PatchNoteModel> _patchNotes = [];
+        public List<PatchNoteModel> PatchNotes
+        {
+            get => _patchNotes;
+            set => this.RaiseAndSetIfChanged(ref _patchNotes, value);
+        }
+
         public ObservableCollection<IconTextModel> IconTexts { get; set; } = [];
-        public ObservableCollection<PatchNoteModel> PatchNotes { get; set; } = [];
+        public ReactiveCommand<Unit, Unit> PatchNoteFilterCommand { get; }
 
 
+        private readonly List<PatchNoteModel> _fullPatchNotes = [];
         private readonly SaveFileReader _saveFileReader;
         private readonly string _patchNotesRequestContent = "{\"query\":\"query($date_range: Float, $search: String, $category: String, $sort: String, $status: String, $version_number: String, $answered: String!, $showHidden: Boolean! $skip: Int!, $limit: Int!) {\\n              allPatchNotes(date_range: $date_range, search: $search, category: $category, sort: $sort, status: $status, version_number: $version_number, answered: $answered, showHidden: $showHidden, skip: $skip, limit: $limit) {\\n                posts{\\n                  id\\n                  title\\n                  upvotes\\n                  categories\\n                  contents\\n                  creation_date\\n                  status\\n                  version_number\\n                  author {\\n                      username\\n                      role\\n                  }\\n                  comments{\\n                      id\\n                  }\\n                  isPinned\\n                  pinnedDate\\n                  countComments\\n                  answered\\n                  admin_data{\\n                    in_progress\\n                  }\\n                  hidden\\n                }\\n                totalDocs\\n                totalUpvotes\\n                totalComments\\n                totalPages\\n                limit\\n                hasPrevPage\\n                hasNextPage\\n              }\\n          }\\n        \",\"variables\":{\"date_range\":9999,\"search\":\"\",\"category\":\"\",\"sort\":\"upvotes-asc\",\"status\":\"\",\"answered\":\"all\",\"showHidden\":false,\"skip\":0,\"limit\":20},\"opName\":\"allPatchNotes\"}";
 
 
         public DashboardViewModel(IScreen screen) : base(screen)
         {
-            _saveFileReader = SaveFileReader.LoadedSaveFile;
+            _saveFileReader = new SaveFileReader();
             _saveFileReader.OnProgressUpdate += SaveFileReader_OnProgressUpdate;
             _saveFileReader.OnFinish += SaveFileReader_OnFinish;
+
+            PatchNoteFilterCommand = ReactiveCommand.Create(() =>
+            {
+                PatchNotes = [.. _fullPatchNotes.Where(o => o.IsStable == StablePatchNotes)];
+            });
 
             GetPatchNotes();
         }
@@ -41,7 +72,6 @@ namespace FactoryPlanner.ViewModels
             TimeSpan playtime = TimeSpan.FromSeconds(_saveFileReader.Header.PlayedSeconds);
 
             IconTexts.Add(new IconTextModel() { Name = $"{playtime.Hours + playtime.Days * 24}h {playtime.Minutes}m", Image = new(".\\Assets\\Icons\\Playtime.png"), Width = 200, Height = 120 });
-
 
             int smelterCount = _saveFileReader.CountActCompHeader(TypePaths.SmelterMk1);
             int assemblerCount = _saveFileReader.CountActCompHeader(TypePaths.AssemblerMk1);
@@ -68,53 +98,37 @@ namespace FactoryPlanner.ViewModels
 
             if (!response.IsSuccessStatusCode)
             {
-                PatchNotes.Add(new PatchNoteModel() { Title = "Failed to load Patch Notes!" });
+                PatchNotes = [new PatchNoteModel() { Title = "Failed to load Patch Notes!" }];
+                return;
             }
 
             JsonNode? json = JsonNode.Parse(await response.Content.ReadAsStringAsync());
             if (json == null)
             {
-                PatchNotes.Add(new PatchNoteModel() { Title = "Failed to load Patch Notes!" });
+                PatchNotes = [new PatchNoteModel() { Title = "Failed to load Patch Notes!" }];
+                return;
             }
 
             JsonArray array = (JsonArray)json["data"]["allPatchNotes"]["posts"];
             foreach (var item in array)
             {
-                PatchNotes.Add(new PatchNoteModel()
+                _fullPatchNotes.Add(new PatchNoteModel()
                 {
                     Id = (string)item["id"],
                     Title = (string)item["title"],
-                    Content = RemoveHtmlTags(((string)item["contents"])[..300]) + "...",
+                    Content = SetHtmlColor((string)item["contents"], "#ddd"),
                     DateTime = DateTimeOffset.FromUnixTimeMilliseconds((long)item["creation_date"]).DateTime,
-                    Version = (string)item["version_number"]
+                    Version = (string)item["version_number"],
+                    IsStable = !((string)item["version_number"]).Contains("Experimental:")
                 });
             }
+            PatchNotes = [.. _fullPatchNotes.Where(o => o.IsStable == StablePatchNotes)];
 
         }
 
-        private static string RemoveHtmlTags(string text)
+        private string SetHtmlColor(string text, string color)
         {
-            while (text.Contains('<'))
-            {
-                int startIndex = text.IndexOf('<');
-                int endIndex = text.IndexOf('>') + 1;
-                if (startIndex > endIndex)
-                {
-                    text = text[..text.IndexOf('<')];
-                    break;
-                }
-
-                if (text[startIndex..endIndex] == "<br>")
-                {
-                    text = text.Insert(startIndex, "\n");
-                    startIndex += "\n".Length;
-                    endIndex += "\n".Length;
-                }
-
-                text = text.Remove(startIndex, endIndex - startIndex);
-            }
-
-            return text;
+            return $"<div style=\"color: {color};\">{text}</div>";
         }
 
         public class IconTextModel
@@ -131,6 +145,7 @@ namespace FactoryPlanner.ViewModels
             public string Content { get; set; } = string.Empty;
             public DateTime DateTime { get; set; }
             public string Version { get; set; } = string.Empty;
+            public bool IsStable { get; set; } = false;
         }
     }
 }

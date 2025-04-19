@@ -31,6 +31,7 @@
 			  <Label Foreground="Orange" FontFamily="{StaticResource Satisfontory}" FontSize="22" VerticalAlignment="Center" HorizontalAlignment="Center" >Factory Planner</Label>
 
 			  <Menu Grid.Column="1" Padding="15">
+				  <MenuItem Command="{TemplateBinding Command}" CommandParameter="Productions" FontWeight="Bold" Header="Productions" />
 				  <MenuItem Command="{TemplateBinding Command}" CommandParameter="TrainStation" FontWeight="Bold" Header="Train Stations" />
 				  <MenuItem Command="{TemplateBinding Command}" CommandParameter="Train" FontWeight="Bold" Header="Trains" />
 			  </Menu>

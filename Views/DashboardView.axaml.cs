@@ -2,11 +2,12 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 using Avalonia.ReactiveUI;
+using FactoryPlanner.ViewModels;
 using ReactiveUI;
 
 namespace FactoryPlanner;
 
-public partial class DashboardView : ReactiveUserControl<UserControl>
+public partial class DashboardView : ReactiveUserControl<DashboardViewModel>
 {
     public DashboardView()
     {

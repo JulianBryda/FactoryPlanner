@@ -27,9 +27,7 @@ namespace FactoryPlanner.ViewModels
         public MainWindowViewModel()
         {
             Navigate = ReactiveCommand.Create<string>(NavigateToView);
-
-            // preload SaveFile 
-            _ = new SaveFileReader();
+            Router.Navigate.Execute(new DashboardViewModel(this));
         }
 
         private void NavigateToView(string viewName)
@@ -41,6 +39,9 @@ namespace FactoryPlanner.ViewModels
                     break;
                 case "Train":
                     Router.Navigate.Execute(new TrainViewModel(this));
+                    break;
+                case "Productions":
+                    Router.Navigate.Execute(new ProductionsViewModel(this));
                     break;
                 default:
                     throw new KeyNotFoundException($"No view found with name \"{viewName}\"!");

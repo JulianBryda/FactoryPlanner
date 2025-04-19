@@ -33,6 +33,14 @@ namespace FactoryPlanner.Assets
             return s_iconPaths.GetValueOrDefault(typePathHash, ".\\Assets\\Missing.png");
         }
 
+        public static Bitmap GetItemIcon(string itemName)
+        {
+            string path = $".\\Assets\\Icons\\Items\\{itemName}.png";
+            if (!File.Exists(path)) path = ".\\Assets\\Missing.png";
+
+            return new Bitmap(path);
+        }
+
         public static Bitmap GetIcon(int typePathHash)
         {
             string path = GetIconPath(typePathHash);
